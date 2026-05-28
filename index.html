@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Montgomery County, PA — Open Data Portal</title>
+  <meta name="description" content="Search and download open datasets published by Montgomery County, Pennsylvania.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f6f2;
+      --surface: #ffffff;
+      --surface2: #f0ede6;
+      --border: rgba(0,0,0,0.10);
+      --border-med: rgba(0,0,0,0.18);
+      --text: #1a1915;
+      --text-muted: #6b6860;
+      --text-faint: #a09e98;
+      --accent: #1a4f8a;
+      --accent-bg: #e8f0f9;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --font: 'DM Sans', system-ui, sans-serif;
+      --mono: 'DM Mono', monospace;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      gap: 1rem;
+    }
+    .header-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .brand-seal {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--accent); display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0;
+    }
+    .brand-seal svg { width: 20px; height: 20px; fill: #fff; }
+    .brand-text { display: flex; flex-direction: column; }
+    .brand-county { font-size: 11px; font-weight: 500; letter-spacing: .06em; color: var(--text-muted); text-transform: uppercase; }
+    .brand-title { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.2; }
+    .header-link {
+      font-size: 13px; color: var(--text-muted); text-decoration: none;
+      padding: 5px 10px; border-radius: var(--radius-sm);
+      transition: background .12s, color .12s;
+    }
+    .header-link:hover { background: var(--surface2); color: var(--text); }
+
+    /* ── Hero ── */
+    .hero {
+      background: var(--accent);
+      padding: 3rem 2rem 2.5rem;
+    }
+    .hero-inner { max-width: 1100px; margin: 0 auto; }
+    .hero h1 { font-size: 28px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .hero p { font-size: 15px; color: rgba(255,255,255,.75); margin-bottom: 1.5rem; max-width: 540px; }
+    .hero-search-wrap { position: relative; max-width: 600px; }
+    .hero-search-wrap svg {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      width: 18px; height: 18px; stroke: #888; fill: none; pointer-events: none;
+    }
+    #search {
+      width: 100%; padding: 13px 16px 13px 44px;
+      font-family: var(--font); font-size: 15px;
+      border: none; border-radius: var(--radius-md);
+      background: #fff; color: var(--text);
+      box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    }
+    #search:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Main layout ── */
+    .main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex; gap: 12px; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .stat-pill {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 13px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .stat-pill strong { color: var(--text); font-weight: 600; }
+
+    /* ── Filters ── */
+    .filters-row {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.25rem;
+      align-items: center;
+    }
+    .filters-label { font-size: 12px; color: var(--text-faint); font-weight: 500; margin-right: 4px; }
+    .filter-btn {
+      font-family: var(--font); font-size: 13px; font-weight: 400;
+      padding: 5px 13px; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text-muted); cursor: pointer; white-space: nowrap;
+      transition: all .13s;
+    }
+    .filter-btn:hover { border-color: var(--border-med); color: var(--text); }
+    .filter-btn.active {
+      background: var(--accent); border-color: var(--accent);
+      color: #fff; font-weight: 500;
+    }
+
+    /* ── Sort ── */
+    .toolbar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1rem; flex-wrap: wrap; gap: 8px;
+    }
+    .result-count { font-size: 13px; color: var(--text-muted); }
+    .sort-select {
+      font-family: var(--font); font-size: 13px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface); color: var(--text);
+      padding: 5px 10px; cursor: pointer;
+    }
+    .sort-select:focus { outline: 2px solid var(--accent); }
+
+    /* ── Dataset grid ── */
+    #cards { display: grid; gap: 10px; }
+
+    .dataset-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.125rem 1.25rem;
+      cursor: pointer; transition: border-color .15s, box-shadow .15s;
+      display: flex; gap: 1rem; justify-content: space-between; align-items: flex-start;
+    }
+    .dataset-card:hover {
+      border-color: var(--border-med);
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    }
+    .card-main { flex: 1; min-width: 0; }
+    .card-meta {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 5px; flex-wrap: wrap;
+    }
+    .tag {
+      display: inline-flex; align-items: center; font-size: 11px; font-weight: 500;
+      padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+    }
+    .card-updated { font-size: 11px; color: var(--text-faint); }
+    .card-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; line-height: 1.4; }
+    .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+    .card-side {
+      display: flex; flex-direction: column;
+      align-items: flex-end; gap: 8px; flex-shrink: 0;
+    }
+    .fmt-badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+    .fmt-badge {
+      font-size: 10px; font-weight: 500; padding: 2px 7px;
+      border-radius: 4px; background: var(--surface2); color: var(--text-muted);
+    }
+
+    /* ── Empty / loading ── */
+    .state-msg {
+      text-align: center; padding: 4rem 1rem;
+      color: var(--text-muted); font-size: 14px;
+    }
+    .spinner {
+      display: inline-block; width: 22px; height: 22px;
+      border: 2px solid var(--border-med); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .7s linear infinite;
+      margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Pagination ── */
+    .pagination {
+      display: flex; gap: 6px; justify-content: center;
+      align-items: center; margin-top: 1.5rem; flex-wrap: wrap;
+    }
+    .page-btn {
+      font-family: var(--font); font-size: 13px;
+      padding: 6px 13px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text-muted); cursor: pointer; transition: all .12s;
+    }
+    .page-btn:hover { border-color: var(--border-med); color: var(--text); }
+    .page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+    .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .page-info { font-size: 13px; color: var(--text-faint); padding: 0 6px; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      display: flex; align-items: flex-start; justify-content: center;
+      z-index: 200; padding: 40px 16px; overflow-y: auto;
+      opacity: 0; pointer-events: none; transition: opacity .18s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface); border-radius: var(--radius-lg);
+      padding: 1.75rem; width: min(640px, 100%);
+      box-shadow: 0 8px 40px rgba(0,0,0,.18);
+      transform: translateY(12px); transition: transform .18s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; gap: 12px; }
+    .modal-close {
+      background: none; border: none; cursor: pointer;
+      font-size: 22px; color: var(--text-muted); padding: 0; line-height: 1;
+      flex-shrink: 0;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-desc { font-size: 14px; line-height: 1.7; color: var(--text); margin-bottom: 1.25rem; }
+    .modal-section-label {
+      font-size: 11px; font-weight: 600; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px;
+    }
+    .kw-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 1.25rem; }
+    .kw-chip {
+      font-size: 12px; padding: 3px 10px; border-radius: 20px;
+      background: var(--surface2); color: var(--text-muted);
+    }
+    .dl-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .btn-dl {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-family: var(--font); font-size: 13px;
+      padding: 7px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-med); background: var(--surface);
+      color: var(--text); cursor: pointer; text-decoration: none;
+      transition: background .12s, border-color .12s;
+    }
+    .btn-dl:hover { background: var(--surface2); border-color: var(--border-med); }
+    .btn-dl svg { width: 14px; height: 14px; stroke: currentColor; fill: none; flex-shrink: 0; }
+    .btn-hub { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-hub:hover { background: #153f70; border-color: #153f70; }
+    .code-block {
+      background: var(--surface2); border-radius: var(--radius-sm);
+      padding: .875rem 1rem; font-family: var(--mono); font-size: 12px;
+      color: var(--text); overflow-x: auto; line-height: 1.6;
+      border: 1px solid var(--border);
+    }
+    .code-comment { color: var(--text-faint); }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border); margin-top: 3rem;
+      padding: 1.5rem 2rem; text-align: center;
+      font-size: 12px; color: var(--text-faint);
+    }
+    footer a { color: var(--text-muted); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .hero { padding: 2rem 1rem 1.75rem; }
+      .hero h1 { font-size: 22px; }
+      .main { padding: 1.25rem 1rem; }
+      .dataset-card { flex-direction: column; }
+      .card-side { flex-direction: row; align-items: center; }
+      header { padding: 0 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-inner">
+    <a class="header-brand" href="#">
+      <div class="brand-seal" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z"/></svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-county">Montgomery County, PA</span>
+        <span class="brand-title">Open Data Portal</span>
+      </div>
+    </a>
+    <nav style="display:flex;gap:4px">
+      <a class="header-link" href="https://mcpa-montcopa.opendata.arcgis.com" target="_blank" rel="noopener">ArcGIS Hub</a>
+      <a class="header-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <h1>Find Montgomery County data</h1>
+    <p>Search and download open GIS datasets published by Montgomery County. Free for public use.</p>
+    <div class="hero-search-wrap">
+      <svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="search" id="search" placeholder="Search by name, keyword, or description…" autocomplete="off" aria-label="Search datasets">
+    </div>
+  </div>
+</section>
+
+<!-- Main -->
+<main class="main">
+
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-pill"><span class="spinner" style="width:14px;height:14px;margin:0"></span> Loading datasets…</div>
+  </div>
+
+  <div class="filters-row" id="filters-row" style="display:none">
+    <span class="filters-label">Filter:</span>
+  </div>
+
+  <div class="toolbar" id="toolbar" style="display:none">
+    <p class="result-count" id="result-count"></p>
+    <select class="sort-select" id="sort-select" aria-label="Sort datasets">
+      <option value="title-asc">Name A–Z</option>
+      <option value="title-desc">Name Z–A</option>
+      <option value="modified-desc">Recently updated</option>
+      <option value="modified-asc">Oldest updated</option>
+    </select>
+  </div>
+
+  <div id="cards" role="list" aria-label="Dataset results"></div>
+  <div id="pagination" class="pagination"></div>
+
+</main>
+
+<!-- Footer -->
+<footer>
+  <p>Data sourced live from the <a href="https://mcpa-montcopa.opendata.arcgis.com/api/feed/dcat-us/1.1.json" target="_blank" rel="noopener">Montgomery County DCAT-US 1.1 feed</a>.
+  All datasets are public and provided by Montgomery County GIS.</p>
+</footer>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal" id="modal-body"></div>
+</div>
+
+<script>
+const FEED = 'https://mcpa-montcopa.opendata.arcgis.com/api/feed/dcat-us/1.1.json';
+const PAGE_SIZE = 25;
+
+let allDatasets = [];
+let filtered = [];
+let activeFilter = 'all';
+let currentPage = 1;
+let currentSort = 'title-asc';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function stripHtml(h) {
+  const d = document.createElement('div');
+  d.innerHTML = h || '';
+  return (d.textContent || d.innerText || '').replace(/\s+/g, ' ').trim();
+}
+
+function fmtDate(s) {
+  if (!s) return '—';
+  try { return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+  catch { return '—'; }
+}
+
+function fmtDateShort(s) {
+  if (!s) return '—';
+  try { return new Date(s).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); }
+  catch { return '—'; }
+}
+
+function getFormats(dist) {
+  if (!dist) return [];
+  const want = [
+    { key: 'CSV',              label: 'CSV',       mediaType: 'text/csv' },
+    { key: 'GeoJSON',          label: 'GeoJSON',   mediaType: 'application/vnd.geo+json' },
+    { key: 'Shapefile',        label: 'Shapefile', format: 'ZIP' },
+    { key: 'KML',              label: 'KML',       mediaType: 'application/vnd.google-earth.kml+xml' },
+    { key: 'ArcGIS GeoService',label: 'GeoService',mediaType: 'application/json' },
+  ];
+  return want.flatMap(w => {
+    const d = dist.find(x => x.title === w.key || x.format === w.key || x.mediaType === w.mediaType);
+    return d ? [{ label: w.label, url: d.accessURL }] : [];
+  });
+}
+
+function categoryFor(keywords) {
+  if (!keywords || !keywords.length) return { label: 'Geospatial', bg: '#f0ede6', fg: '#6b6860' };
+  const kl = (keywords || []).map(k => k.toLowerCase()).join(' ');
+  const cats = [
+    { label: 'Imagery',       keys: ['aerial','imagery','photo','tif','tiff','raster','orthophoto'], bg:'#e8f0f9', fg:'#1a4f8a' },
+    { label: 'Boundaries',    keys: ['boundary','parcel','zoning','municipal','district','ward','jurisdiction','borough','township'], bg:'#eaf3de', fg:'#3b6d11' },
+    { label: 'Transportation',keys: ['road','trail','transit','bridge','transportation','railway','bike','pedestrian'], bg:'#faeeda', fg:'#854f0b' },
+    { label: 'Environment',   keys: ['water','flood','wetland','environment','natural','stream','hydro','park','tree'], bg:'#e1f5ee', fg:'#0f6e56' },
+    { label: 'Finance',       keys: ['tax','assessment','permit','finance','budget','revenue','spending'], bg:'#fff3e0', fg:'#8a5200' },
+    { label: 'Elections',     keys: ['election','voting','precinct','polling','ballot'], bg:'#eeedfe', fg:'#534ab7' },
+    { label: 'Land use',      keys: ['land use','landuse','land cover','zoning','building','structure','address'], bg:'#fde8f0', fg:'#993556' },
+    { label: 'Demographics',  keys: ['census','population','demographic','household','income'], bg:'#f3e8fd', fg:'#6b3a9e' },
+    { label: 'Emergency',     keys: ['emergency','911','fire','police','ems','hazard','flood'], bg:'#fceaea', fg:'#a32d2d' },
+  ];
+  for (const cat of cats) {
+    if (cat.keys.some(k => kl.includes(k))) return { label: cat.label, bg: cat.bg, fg: cat.fg };
+  }
+  return { label: 'Geospatial', bg: '#f0ede6', fg: '#6b6860' };
+}
+
+function dedupeByItem(datasets) {
+  const seen = new Map();
+  datasets.forEach(d => {
+    const base = (d.identifier || '').replace(/[?&]sublayer=\d+/, '');
+    if (!seen.has(base)) seen.set(base, d);
+  });
+  return Array.from(seen.values());
+}
+
+function sortDatasets(arr, method) {
+  const copy = [...arr];
+  if (method === 'title-asc') copy.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  if (method === 'title-desc') copy.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+  if (method === 'modified-desc') copy.sort((a, b) => new Date(b.modified || 0) - new Date(a.modified || 0));
+  if (method === 'modified-asc') copy.sort((a, b) => new Date(a.modified || 0) - new Date(b.modified || 0));
+  return copy;
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+
+function applyFiltersAndRender() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  filtered = allDatasets.filter(d => {
+    const matchCat = activeFilter === 'all' || categoryFor(d.keyword).label === activeFilter;
+    const matchQ = !q || (d.title || '').toLowerCase().includes(q)
+      || (d._desc || '').toLowerCase().includes(q)
+      || (d.keyword || []).some(k => k.toLowerCase().includes(q));
+    return matchCat && matchQ;
+  });
+  filtered = sortDatasets(filtered, currentSort);
+  currentPage = 1;
+  renderPage();
+}
+
+function renderPage() {
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const slice = filtered.slice(start, start + PAGE_SIZE);
+
+  document.getElementById('result-count').textContent =
+    total === allDatasets.length
+      ? `${total} datasets`
+      : `${total} of ${allDatasets.length} datasets`;
+
+  const cards = document.getElementById('cards');
+  if (!slice.length) {
+    cards.innerHTML = '<div class="state-msg">No datasets match your search.</div>';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  cards.innerHTML = slice.map((d, i) => {
+    const cat = categoryFor(d.keyword);
+    const fmts = getFormats(d.distribution);
+    const desc = d._desc ? d._desc.substring(0, 130) + (d._desc.length > 130 ? '…' : '') : 'No description available.';
+    return `<div class="dataset-card" role="listitem" onclick="openModal('${start + i}')" tabindex="0"
+      onkeydown="if(event.key==='Enter'||event.key===' ')openModal('${start + i}')">
+      <div class="card-main">
+        <div class="card-meta">
+          <span class="tag" style="background:${cat.bg};color:${cat.fg}">${cat.label}</span>
+          <span class="card-updated">Updated ${fmtDateShort(d.modified)}</span>
+        </div>
+        <p class="card-title">${d.title || 'Untitled'}</p>
+        <p class="card-desc">${desc}</p>
+      </div>
+      <div class="card-side">
+        <div class="fmt-badges">
+          ${fmts.filter(f => f.label !== 'GeoService').slice(0, 4).map(f => `<span class="fmt-badge">${f.label}</span>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // store data refs
+  slice.forEach((d, i) => {
+    const el = cards.children[i];
+    if (el) el._dataset = d;
+  });
+
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  const pg = document.getElementById('pagination');
+  if (totalPages <= 1) { pg.innerHTML = ''; return; }
+
+  let html = `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>← Prev</button>`;
+  const range = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) range.push(i);
+    else if (range[range.length - 1] !== '…') range.push('…');
+  }
+  range.forEach(p => {
+    if (p === '…') html += `<span class="page-info">…</span>`;
+    else html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  html += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>`;
+  pg.innerHTML = html;
+}
+
+function goPage(p) {
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (p < 1 || p > totalPages) return;
+  currentPage = p;
+  renderPage();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────────
+
+function openModal(idx) {
+  const allCards = document.querySelectorAll('.dataset-card');
+  // find by position in current page
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const d = filtered[parseInt(idx)];
+  if (!d) return;
+
+  const fmts = getFormats(d.distribution);
+  const cat = categoryFor(d.keyword);
+  const geoSvc = (d.distribution || []).find(x => x.title === 'ArcGIS GeoService');
+  const hubUrl = d.landingPage || '#';
+
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-header">
+      <div style="flex:1;min-width:0">
+        <span class="tag" style="background:${cat.bg};color:${cat.fg};margin-bottom:8px;display:inline-flex">${cat.label}</span>
+        <h2 id="modal-title" style="font-size:18px;font-weight:600;line-height:1.35;margin-top:6px">${d.title || 'Untitled'}</h2>
+        <p style="font-size:12px;color:var(--text-faint);margin-top:4px">
+          ${d.publisher ? d.publisher.name : 'Montgomery County'} ·
+          Issued ${fmtDate(d.issued)} · Updated ${fmtDate(d.modified)}
+        </p>
+      </div>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">×</button>
+    </div>
+
+    <p class="modal-desc">${d._desc || 'No description available.'}</p>
+
+    ${d.keyword && d.keyword.length ? `
+    <p class="modal-section-label">Keywords</p>
+    <div class="kw-wrap">${d.keyword.map(k => `<span class="kw-chip">${k}</span>`).join('')}</div>` : ''}
+
+    <p class="modal-section-label">Download & access</p>
+    <div class="dl-row">
+      ${fmts.filter(f => f.label !== 'GeoService').map(f => `
+        <a class="btn-dl" href="${f.url}" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          ${f.label}
+        </a>`).join('')}
+      <a class="btn-dl btn-hub" href="${hubUrl}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        View on Hub
+      </a>
+    </div>
+
+    ${geoSvc ? `
+    <p class="modal-section-label">ArcGIS REST endpoint</p>
+    <div class="code-block">${geoSvc.accessURL}</div>` : ''}
+
+    ${d.spatial ? `
+    <p class="modal-section-label" style="margin-top:1rem">Spatial extent</p>
+    <div class="code-block"><span class="code-comment">// bounding box (minLon, minLat, maxLon, maxLat)</span>
+${d.spatial}</div>` : ''}
+  `;
+
+  const overlay = document.getElementById('modal');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Filters bar ──────────────────────────────────────────────────────────────
+
+function buildFilters() {
+  const counts = {};
+  allDatasets.forEach(d => {
+    const label = categoryFor(d.keyword).label;
+    counts[label] = (counts[label] || 0) + 1;
+  });
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7).map(x => x[0]);
+
+  const row = document.getElementById('filters-row');
+  row.style.display = 'flex';
+  row.innerHTML = `<span class="filters-label">Filter:</span>
+    <button class="filter-btn active" onclick="setFilter('all', this)">All <span style="opacity:.6;font-size:11px">${allDatasets.length}</span></button>
+    ${top.map(c => `<button class="filter-btn" onclick="setFilter('${c}', this)">${c} <span style="opacity:.6;font-size:11px">${counts[c]}</span></button>`).join('')}`;
+}
+
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  applyFiltersAndRender();
+}
+
+// ── Sort & search wiring ──────────────────────────────────────────────────────
+
+document.getElementById('search').addEventListener('input', applyFiltersAndRender);
+document.getElementById('sort-select').addEventListener('change', e => {
+  currentSort = e.target.value;
+  applyFiltersAndRender();
+});
+
+// ── Fetch ─────────────────────────────────────────────────────────────────────
+
+async function init() {
+  try {
+    const res = await fetch(FEED);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+
+    let raw = json.dataset || [];
+    raw = dedupeByItem(raw);
+    raw = raw.map(d => ({ ...d, _desc: stripHtml(d.description || '') }));
+
+    allDatasets = raw;
+
+    // Stats bar
+    const modDates = raw.map(d => d.modified).filter(Boolean).sort().reverse();
+    const lastUpdated = modDates.length ? fmtDateShort(modDates[0]) : '—';
+    const formatSet = new Set(raw.flatMap(d => getFormats(d.distribution).map(f => f.label)));
+
+    document.getElementById('stats-bar').innerHTML = `
+      <div class="stat-pill"><strong>${raw.length}</strong> datasets</div>
+      <div class="stat-pill">Updated <strong>${lastUpdated}</strong></div>
+      <div class="stat-pill">${[...formatSet].filter(f => f !== 'GeoService').join(' · ')}</div>
+      <div class="stat-pill">Publisher: <strong>Montgomery County GIS</strong></div>
+    `;
+
+    document.getElementById('toolbar').style.display = 'flex';
+    buildFilters();
+    applyFiltersAndRender();
+
+  } catch (err) {
+    document.getElementById('stats-bar').innerHTML =
+      `<div class="stat-pill" style="color:#a32d2d">Failed to load feed: ${err.message}. Check your network or CORS settings.</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
