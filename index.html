@@ -431,16 +431,33 @@ function fmtDateShort(s) {
 function getFormats(dist) {
   if (!dist) return [];
   const want = [
-    { key: 'CSV',              label: 'CSV',       mediaType: 'text/csv' },
-    { key: 'GeoJSON',          label: 'GeoJSON',   mediaType: 'application/vnd.geo+json' },
-    { key: 'Shapefile',        label: 'Shapefile', format: 'ZIP' },
-    { key: 'KML',              label: 'KML',       mediaType: 'application/vnd.google-earth.kml+xml' },
-    { key: 'ArcGIS GeoService',label: 'GeoService',mediaType: 'application/json' },
+    { key: 'CSV',       label: 'CSV',       mediaType: 'text/csv' },
+    { key: 'GeoJSON',   label: 'GeoJSON',   mediaType: 'application/vnd.geo+json' },
+    { key: 'Shapefile', label: 'Shapefile', format: 'ZIP' },
+    { key: 'KML',       label: 'KML',       mediaType: 'application/vnd.google-earth.kml+xml' },
   ];
-  return want.flatMap(w => {
+  const result = want.flatMap(w => {
     const d = dist.find(x => x.title === w.key || x.format === w.key || x.mediaType === w.mediaType);
     return d ? [{ label: w.label, url: d.accessURL }] : [];
   });
+  // GeoService: match by title, format string, or URL pattern (FeatureServer/MapServer/ImageServer)
+  const geoSvcDist = dist.find(x =>
+    x.title === 'ArcGIS GeoService' ||
+    (x.format && x.format.toLowerCase().includes('geoservice')) ||
+    (x.accessURL && /\/(FeatureServer|MapServer|ImageServer)(\/\d+)?$/i.test(x.accessURL))
+  );
+  if (geoSvcDist) result.push({ label: 'GeoService', url: geoSvcDist.accessURL });
+  return result;
+}
+
+// Also update geoSvc lookup to use same broad match
+function findGeoSvc(dist) {
+  if (!dist) return null;
+  return dist.find(x =>
+    x.title === 'ArcGIS GeoService' ||
+    (x.format && x.format.toLowerCase().includes('geoservice')) ||
+    (x.accessURL && /\/(FeatureServer|MapServer|ImageServer)(\/\d+)?$/i.test(x.accessURL))
+  ) || null;
 }
 
 // Extract ArcGIS item ID from identifier URL
@@ -718,7 +735,7 @@ function renderModal(d) {
   const fmts = getFormats(d.distribution);
   const cats = categoriesFor(d.keyword);
   const cat = cats.length ? cats[0] : { label: 'Uncategorized', bg: '#f0ede6', fg: '#6b6860' };
-  const geoSvc = (d.distribution || []).find(x => x.title === 'ArcGIS GeoService');
+  const geoSvc = findGeoSvc(d.distribution);
   const hubUrl = d.landingPage || '#';
   const thumb = thumbUrl(d);
   const related = getRelated(d, allDatasets);
@@ -736,10 +753,11 @@ function renderModal(d) {
       <button class="modal-close" onclick="closeModal()" aria-label="Close">×</button>
     </div>
 
-    ${thumb ? `<img src="${thumb}" alt="" style="width:200px;height:150px;object-fit:contain;border-radius:var(--radius-sm);margin-bottom:1.25rem;background:var(--surface)"
-      onerror="this.style.display='none'">` : ''}
-
-    <p class="modal-desc">${d._desc || 'No description available.'}</p>
+    <div style="display:flex;gap:1.25rem;align-items:flex-start;margin-bottom:1.25rem">
+      <p class="modal-desc" style="margin-bottom:0;flex:1">${d._desc || 'No description available.'}</p>
+      ${thumb ? `<img src="${thumb}" alt="" style="width:160px;height:120px;object-fit:contain;border-radius:var(--radius-sm);flex-shrink:0;background:var(--surface)"
+        onerror="this.style.display='none'">` : ''}
+    </div>
 
     ${d.keyword && d.keyword.length ? `
     <p class="modal-section-label">Keywords</p>
@@ -910,7 +928,8 @@ async function refreshNow() {
     `<div class="stat-pill"><span class="spinner" style="width:14px;height:14px;margin:0"></span> Refreshing…</div>`;
   try {
     const raw = await fetchFeed();
-    saveCache(raw);
+    // fetchFeed triggers thumbnail enrichment which calls saveCache + renderPage
+    // Just need processAndRender here for immediate render before thumbnails load
     processAndRender(raw, false);
   } catch (err) {
     document.getElementById('stats-bar').innerHTML =
