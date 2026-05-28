@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documents — Montgomery County, PA Open Data Portal</title>
+  <meta name="description" content="Reports, summaries and planning documents published by Montgomery County, Pennsylvania.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f6f2;
+      --surface: #ffffff;
+      --surface2: #f0ede6;
+      --border: rgba(0,0,0,0.10);
+      --border-med: rgba(0,0,0,0.18);
+      --text: #1a1915;
+      --text-muted: #6b6860;
+      --text-faint: #a09e98;
+      --accent: #1a4f8a;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --font: 'DM Sans', system-ui, sans-serif;
+    }
+
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.5; }
+
+    /* ── Header ── */
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; position: sticky; top: 0; z-index: 50; }
+    .header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 1rem; }
+    .header-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .brand-seal { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .brand-seal svg { width: 20px; height: 20px; fill: #fff; }
+    .brand-text { display: flex; flex-direction: column; }
+    .brand-county { font-size: 11px; font-weight: 500; letter-spacing: .06em; color: var(--text-muted); text-transform: uppercase; }
+    .brand-title { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.2; }
+    .header-link { font-size: 13px; color: var(--text-muted); text-decoration: none; padding: 5px 10px; border-radius: var(--radius-sm); transition: background .12s, color .12s; }
+    .header-link:hover { background: var(--surface2); color: var(--text); }
+    .header-link.active { color: var(--accent); font-weight: 500; }
+
+    /* ── Hero ── */
+    .hero { background: var(--accent); padding: 3rem 2rem 2.5rem; }
+    .hero-inner { max-width: 1100px; margin: 0 auto; }
+    .hero h1 { font-size: 28px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .hero p { font-size: 15px; color: rgba(255,255,255,.75); max-width: 540px; }
+
+    /* ── Main ── */
+    .main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+    /* ── Search ── */
+    .search-bar { position: relative; margin-bottom: 1.5rem; }
+    .search-bar svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; stroke: var(--text-faint); fill: none; pointer-events: none; }
+    #doc-search { width: 100%; padding: 10px 14px 10px 38px; font-family: var(--font); font-size: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text); }
+    #doc-search:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-color: transparent; }
+
+    /* ── Stats ── */
+    .stats-bar { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .stat-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 5px 14px; font-size: 13px; color: var(--text-muted); }
+    .stat-pill strong { color: var(--text); font-weight: 600; }
+
+    /* ── Filters ── */
+    .filters-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.25rem; align-items: center; }
+    .filters-label { font-size: 12px; color: var(--text-faint); font-weight: 500; margin-right: 4px; }
+    .filter-btn { font-family: var(--font); font-size: 13px; padding: 5px 13px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: all .13s; }
+    .filter-btn:hover { border-color: var(--border-med); color: var(--text); }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+
+    /* ── Department section ── */
+    .dept-section { margin-bottom: 2.5rem; }
+    .dept-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
+    .dept-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .dept-icon svg { width: 16px; height: 16px; stroke: #fff; fill: none; }
+    .dept-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .dept-count { font-size: 12px; color: var(--text-faint); margin-left: auto; }
+
+    /* ── Doc grid ── */
+    .doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+
+    /* ── Doc card ── */
+    .doc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.125rem; display: flex; gap: .875rem; align-items: flex-start; transition: border-color .15s, box-shadow .15s; }
+    .doc-card:hover { border-color: var(--border-med); box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+    .doc-icon { width: 38px; height: 46px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+    .doc-icon-pdf { background: #fceaea; color: #a32d2d; }
+    .doc-icon-table { background: #eaf3de; color: #3b6d11; }
+    .doc-icon-xlsx { background: #eaf3de; color: #3b6d11; }
+    .doc-icon-csv { background: #e8f0f9; color: #1a4f8a; }
+    .doc-icon-html { background: #faeeda; color: #854f0b; }
+    .doc-body { flex: 1; min-width: 0; }
+    .doc-title { font-size: 14px; font-weight: 500; line-height: 1.4; margin-bottom: 3px; }
+    .doc-desc { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin-bottom: 8px; }
+    .doc-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .doc-meta { font-size: 11px; color: var(--text-faint); }
+    .doc-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .doc-tag { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 20px; background: var(--surface2); color: var(--text-muted); }
+    .btn-view { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font); font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: var(--radius-sm); background: var(--accent); color: #fff; border: none; text-decoration: none; cursor: pointer; white-space: nowrap; transition: background .12s; flex-shrink: 0; }
+    .btn-view:hover { background: #153f70; }
+    .btn-view svg { width: 12px; height: 12px; stroke: currentColor; fill: none; }
+
+    /* ── Empty ── */
+    .empty-msg { text-align: center; padding: 3rem; color: var(--text-muted); font-size: 14px; }
+
+    /* ── Footer ── */
+    footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 1.5rem 2rem; text-align: center; font-size: 12px; color: var(--text-faint); }
+    footer a { color: var(--text-muted); }
+
+    @media (max-width: 640px) {
+      .hero { padding: 2rem 1rem 1.75rem; }
+      .main { padding: 1.25rem 1rem; }
+      header { padding: 0 1rem; }
+      .doc-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="header-brand" href="index.html">
+      <div class="brand-seal" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z"/></svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-county">Montgomery County, PA</span>
+        <span class="brand-title">Open Data Portal</span>
+      </div>
+    </a>
+    <nav style="display:flex;gap:4px">
+      <a class="header-link" href="index.html">Datasets</a>
+      <a class="header-link" href="apps.html">Apps & Tools</a>
+      <a class="header-link active" href="docs.html">Documents</a>
+      <a class="header-link" href="https://mcpa-montcopa.opendata.arcgis.com" target="_blank" rel="noopener">ArcGIS Hub</a>
+      <a class="header-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <h1>Documents</h1>
+    <p>Reports, annual summaries, and planning documents published by Montgomery County departments.</p>
+  </div>
+</section>
+
+<main class="main">
+
+  <div class="stats-bar">
+    <div class="stat-pill"><strong id="doc-total">0</strong> documents</div>
+    <div class="stat-pill">Showing <strong id="doc-showing">0</strong></div>
+  </div>
+
+  <div class="search-bar">
+    <svg viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="search" id="doc-search" placeholder="Search documents by title, description, or tag…" autocomplete="off">
+  </div>
+
+  <div class="filters-row" id="filters-row">
+    <span class="filters-label">Department:</span>
+  </div>
+
+  <div id="doc-container"></div>
+  <p id="doc-empty" class="empty-msg" style="display:none">No documents match your search.</p>
+
+</main>
+
+<footer>
+  <p>Documents published by Montgomery County departments.
+  For GIS datasets visit the <a href="index.html">Open Data Portal</a> or <a href="apps.html">Apps & Tools</a>.</p>
+</footer>
+
+<script>
+// ── Document catalog ──────────────────────────────────────────────────────────
+// To add a document: copy an entry and fill in the fields.
+// type: 'PDF' | 'XLSX' | 'CSV' | 'HTML' | 'Table'
+// dept: must match a key in DEPARTMENTS below
+// tags: short topic labels
+// year: publication year (used for sorting and display)
+const DOCS = [
+  {
+    id: 1,
+    title: '2024 Annual Summary — Subdivision, Land Development & Zoning Activity',
+    desc: 'Summarizes subdivision and land development applications and proposed municipal zoning amendments received by the Montgomery County Planning Commission in 2024.',
+    url: 'https://webapp07.montcopa.org/planning/dataportal/pdfs/2024AnnualSummaryfinal2025.02.20.pdf',
+    type: 'PDF',
+    dept: 'Planning',
+    tags: ['Annual Report', 'Zoning', 'Land Development', 'Subdivision'],
+    year: 2024,
+  },
+  // ── Add more documents below ─────────────────────────────────────────────
+  // {
+  //   id: 2,
+  //   title: '2023 Annual Summary',
+  //   desc: 'Description here.',
+  //   url: 'https://webapp07.montcopa.org/planning/dataportal/pdfs/...',
+  //   type: 'PDF',
+  //   dept: 'Planning',
+  //   tags: ['Annual Report', 'Zoning'],
+  //   year: 2023,
+  // },
+];
+
+// ── Department definitions ────────────────────────────────────────────────────
+// Add a new dept here when you expand beyond Planning
+const DEPARTMENTS = {
+  'Planning':      { color: '#1a4f8a', bg: '#e8f0f9' },
+  'GIS':           { color: '#3b6d11', bg: '#eaf3de' },
+  'Public Safety': { color: '#a32d2d', bg: '#fceaea' },
+  'Finance':       { color: '#854f0b', bg: '#faeeda' },
+  'Elections':     { color: '#534ab7', bg: '#eeedfe' },
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let activeDept = 'all';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function iconClass(type) {
+  const map = { PDF: 'doc-icon-pdf', XLSX: 'doc-icon-xlsx', CSV: 'doc-icon-csv', HTML: 'doc-icon-html', Table: 'doc-icon-table' };
+  return map[type] || 'doc-icon-pdf';
+}
+
+function iconSvg(type) {
+  if (type === 'PDF') return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#a32d2d" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>`;
+  if (type === 'XLSX' || type === 'Table') return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#3b6d11" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`;
+  if (type === 'CSV') return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#1a4f8a" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+  return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#854f0b" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function docCard(doc) {
+  const dept = DEPARTMENTS[doc.dept] || { color: '#6b6860', bg: '#f0ede6' };
+  const isExternal = !doc.url.includes('github.io');
+  return `
+    <div class="doc-card">
+      <div class="doc-icon ${iconClass(doc.type)}">${iconSvg(doc.type)}</div>
+      <div class="doc-body">
+        <p class="doc-title">${doc.title}</p>
+        <p class="doc-desc">${doc.desc}</p>
+        <div class="doc-footer">
+          <div>
+            <div class="doc-tags" style="margin-bottom:4px">
+              ${doc.tags.map(t => `<span class="doc-tag">${t}</span>`).join('')}
+            </div>
+            <p class="doc-meta">${doc.type} · ${doc.year}</p>
+          </div>
+          <a class="btn-view" href="${doc.url}" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" stroke-width="2">${isExternal
+              ? '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'
+              : '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'}
+            </svg>
+            ${doc.type === 'HTML' ? 'View' : 'Open'}
+          </a>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderDocs() {
+  const q = document.getElementById('doc-search').value.toLowerCase().trim();
+  const filtered = DOCS.filter(d => {
+    const matchDept = activeDept === 'all' || d.dept === activeDept;
+    const matchQ = !q ||
+      d.title.toLowerCase().includes(q) ||
+      d.desc.toLowerCase().includes(q) ||
+      d.tags.some(t => t.toLowerCase().includes(q)) ||
+      d.dept.toLowerCase().includes(q) ||
+      String(d.year).includes(q);
+    return matchDept && matchQ;
+  });
+
+  document.getElementById('doc-total').textContent = DOCS.length;
+  document.getElementById('doc-showing').textContent = filtered.length;
+
+  const container = document.getElementById('doc-container');
+  const empty = document.getElementById('doc-empty');
+
+  if (!filtered.length) {
+    container.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Group by department
+  const groups = {};
+  filtered.forEach(d => {
+    if (!groups[d.dept]) groups[d.dept] = [];
+    groups[d.dept].push(d);
+  });
+
+  // Sort each group by year descending
+  Object.values(groups).forEach(g => g.sort((a, b) => b.year - a.year));
+
+  container.innerHTML = Object.entries(groups).map(([dept, docs]) => {
+    const deptDef = DEPARTMENTS[dept] || { color: '#6b6860', bg: '#f0ede6' };
+    return `
+      <div class="dept-section">
+        <div class="dept-header">
+          <div class="dept-icon" style="background:${deptDef.color}">
+            <svg viewBox="0 0 24 24" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <span class="dept-name">${dept}</span>
+          <span class="dept-count">${docs.length} document${docs.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="doc-grid">${docs.map(docCard).join('')}</div>
+      </div>`;
+  }).join('');
+}
+
+function buildFilters() {
+  const depts = [...new Set(DOCS.map(d => d.dept))];
+  const row = document.getElementById('filters-row');
+  row.innerHTML = `<span class="filters-label">Department:</span>
+    <button class="filter-btn active" onclick="setFilter('all',this)">All <span style="opacity:.6;font-size:11px">${DOCS.length}</span></button>
+    ${depts.map(dept => {
+      const count = DOCS.filter(d => d.dept === dept).length;
+      return `<button class="filter-btn" onclick="setFilter('${dept}',this)">${dept} <span style="opacity:.6;font-size:11px">${count}</span></button>`;
+    }).join('')}`;
+}
+
+function setFilter(dept, el) {
+  activeDept = dept;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderDocs();
+}
+
+document.getElementById('doc-search').addEventListener('input', renderDocs);
+
+buildFilters();
+renderDocs();
+</script>
+</body>
+</html>
