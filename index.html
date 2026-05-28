@@ -467,7 +467,7 @@ async function enrichThumbnails(datasets) {
         if (!res.ok) return;
         const json = await res.json();
         if (!json.thumbnail) return;
-        const url = `https://www.arcgis.com/sharing/rest/content/items/${id}/info/${json.thumbnail}`;
+        const url = `https://www.arcgis.com/sharing/rest/content/items/${id}/info/${json.thumbnail}?w=400`;
         datasets.forEach(d => { if (itemId(d) === id) d._thumb = url; });
       } catch { /* fail silently */ }
     }));
@@ -493,6 +493,11 @@ const CATEGORIES = {
   'Utility':         { bg: '#ede7f6', fg: '#4527a0' },
 };
 const CATEGORY_NAMES = Object.keys(CATEGORIES);
+
+// Check if a dataset's primary category is Imagery
+function isImagery(keywords) {
+  return categoriesFor(keywords).some(c => c.label === 'Imagery');
+}
 
 // Return all matching categories for a dataset (preserving keyword order)
 function categoriesFor(keywords) {
@@ -651,7 +656,9 @@ function renderPage() {
       </div>
       <div class="card-side">
         <div class="fmt-badges">
-          ${fmts.filter(f => f.label !== 'GeoService').slice(0, 4).map(f => `<span class="fmt-badge">${f.label}</span>`).join('')}
+          ${isImagery(d.keyword)
+            ? '<span class="fmt-badge">GeoService</span>'
+            : fmts.filter(f => f.label !== 'GeoService').slice(0, 4).map(f => `<span class="fmt-badge">${f.label}</span>`).join('')}
         </div>
       </div>
     </div>`;
@@ -738,13 +745,17 @@ function renderModal(d) {
     <p class="modal-section-label">Keywords</p>
     <div class="kw-wrap">${d.keyword.map(k => `<span class="kw-chip">${k}</span>`).join('')}</div>` : ''}
 
-    <p class="modal-section-label">Download & access</p>
+    <p class="modal-section-label">${isImagery(d.keyword) ? 'Access' : 'Download & access'}</p>
     <div class="dl-row">
-      ${fmts.filter(f => f.label !== 'GeoService').map(f => `
+      ${isImagery(d.keyword) ? '' : fmts.filter(f => f.label !== 'GeoService').map(f => `
         <a class="btn-dl" href="${f.url}" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           ${f.label}
         </a>`).join('')}
+      ${geoSvc ? `<a class="btn-dl" href="${geoSvc.accessURL}" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          GeoService
+        </a>` : ''}
       <a class="btn-dl btn-hub" href="${hubUrl}" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         View on Hub
