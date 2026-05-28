@@ -736,7 +736,7 @@ function renderModal(d) {
       <button class="modal-close" onclick="closeModal()" aria-label="Close">×</button>
     </div>
 
-    ${thumb ? `<img src="${thumb}" alt="" style="width:120px;height:90px;object-fit:contain;border-radius:var(--radius-sm);margin-bottom:1.25rem;background:var(--surface)"
+    ${thumb ? `<img src="${thumb}" alt="" style="width:200px;height:150px;object-fit:contain;border-radius:var(--radius-sm);margin-bottom:1.25rem;background:var(--surface)"
       onerror="this.style.display='none'">` : ''}
 
     <p class="modal-desc">${d._desc || 'No description available.'}</p>
