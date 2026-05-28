@@ -425,6 +425,20 @@ function dedupeByItem(datasets) {
   return Array.from(seen.values());
 }
 
+// Filter out Hub pages, dashboards, story maps, and other non-data items.
+// A real dataset has at least one downloadable distribution beyond a plain web page.
+const DATA_FORMATS = ['text/csv','application/vnd.geo+json','application/zip','application/vnd.google-earth.kml+xml','application/json'];
+const DATA_TITLES  = ['CSV','GeoJSON','Shapefile','KML','ArcGIS GeoService'];
+
+function isRealDataset(d) {
+  const dist = d.distribution || [];
+  return dist.some(x =>
+    DATA_FORMATS.includes(x.mediaType) ||
+    DATA_TITLES.includes(x.title) ||
+    (x.format && x.format !== 'Web Page')
+  );
+}
+
 function sortDatasets(arr, method) {
   const copy = [...arr];
   if (method === 'title-asc') copy.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
@@ -642,6 +656,7 @@ async function init() {
 
     let raw = json.dataset || [];
     raw = dedupeByItem(raw);
+    raw = raw.filter(isRealDataset);
     raw = raw.map(d => ({ ...d, _desc: stripHtml(d.description || '') }));
 
     allDatasets = raw;
