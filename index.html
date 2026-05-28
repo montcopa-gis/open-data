@@ -336,6 +336,7 @@
     <nav style="display:flex;gap:4px">
       <a class="header-link" href="index.html" style="color:var(--accent);font-weight:500">Datasets</a>
       <a class="header-link" href="apps.html">Apps & Tools</a>
+      <a class="header-link" href="docs.html">Documents</a>
       <a class="header-link" href="https://mcpa-montcopa.opendata.arcgis.com" target="_blank" rel="noopener">ArcGIS Hub</a>
       <a class="header-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
     </nav>
@@ -675,7 +676,7 @@ function renderPage() {
         <div class="fmt-badges">
           ${isImagery(d.keyword)
             ? '<span class="fmt-badge">GeoService</span>'
-            : fmts.filter(f => f.label !== 'GeoService').slice(0, 4).map(f => `<span class="fmt-badge">${f.label}</span>`).join('')}
+            : fmts.slice(0, 5).map(f => `<span class="fmt-badge">${f.label}</span>`).join('')}
         </div>
       </div>
     </div>`;
@@ -927,9 +928,8 @@ async function refreshNow() {
     `<div class="stat-pill"><span class="spinner" style="width:14px;height:14px;margin:0"></span> Refreshing…</div>`;
   try {
     const raw = await fetchFeed();
-    // fetchFeed triggers thumbnail enrichment which calls saveCache + renderPage
-    // Just need processAndRender here for immediate render before thumbnails load
-    processAndRender(raw, false);
+    // Pass true so the cached pill reappears — data is being saved to cache by fetchFeed
+    processAndRender(raw, true);
   } catch (err) {
     document.getElementById('stats-bar').innerHTML =
       `<div class="stat-pill" style="color:#a32d2d">Refresh failed: ${err.message}</div>`;
