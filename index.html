@@ -334,6 +334,8 @@
       </div>
     </a>
     <nav style="display:flex;gap:4px">
+      <a class="header-link" href="index.html" style="color:var(--accent);font-weight:500">Datasets</a>
+      <a class="header-link" href="apps.html">Apps & Tools</a>
       <a class="header-link" href="https://mcpa-montcopa.opendata.arcgis.com" target="_blank" rel="noopener">ArcGIS Hub</a>
       <a class="header-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
     </nav>
@@ -472,36 +474,52 @@ async function enrichThumbnails(datasets) {
   }
 }
 
-// Find related datasets by shared keywords/category
-function getRelated(d, all, max = 4) {
-  const cat = categoryFor(d.keyword).label;
-  const kws = new Set((d.keyword || []).map(k => k.toLowerCase()));
-  return all
-    .filter(x => x !== d && (
-      categoryFor(x.keyword).label === cat ||
-      (x.keyword || []).some(k => kws.has(k.toLowerCase()))
-    ))
-    .slice(0, max);
+// ── Official category list ────────────────────────────────────────────────────
+// Exact match against dataset keywords (case-insensitive).
+// A dataset can belong to multiple categories.
+const CATEGORIES = {
+  'Boundaries':      { bg: '#eaf3de', fg: '#3b6d11' },
+  'Community':       { bg: '#fde8f0', fg: '#993556' },
+  'Elections':       { bg: '#eeedfe', fg: '#534ab7' },
+  'Election Results':{ bg: '#e8e5fe', fg: '#3d2fa8' },
+  'Imagery':         { bg: '#e8f0f9', fg: '#1a4f8a' },
+  'Legislative':     { bg: '#f3e8fd', fg: '#6b3a9e' },
+  'Parcels':         { bg: '#fff3e0', fg: '#8a5200' },
+  'Planning':        { bg: '#e1f5ee', fg: '#0f6e56' },
+  'Public Safety':   { bg: '#fceaea', fg: '#a32d2d' },
+  'Real-Time':       { bg: '#e0f7fa', fg: '#00695c' },
+  'Recreation':      { bg: '#f1f8e9', fg: '#558b2f' },
+  'Transportation':  { bg: '#faeeda', fg: '#854f0b' },
+  'Utility':         { bg: '#ede7f6', fg: '#4527a0' },
+};
+const CATEGORY_NAMES = Object.keys(CATEGORIES);
+
+// Return all matching categories for a dataset (preserving keyword order)
+function categoriesFor(keywords) {
+  if (!keywords || !keywords.length) return [];
+  return keywords
+    .map(k => {
+      const match = CATEGORY_NAMES.find(c => c.toLowerCase() === k.toLowerCase());
+      return match ? { label: match, ...CATEGORIES[match] } : null;
+    })
+    .filter(Boolean);
 }
 
-function categoryFor(keywords) {
-  if (!keywords || !keywords.length) return { label: 'Geospatial', bg: '#f0ede6', fg: '#6b6860' };
-  const kl = (keywords || []).map(k => k.toLowerCase()).join(' ');
-  const cats = [
-    { label: 'Imagery',       keys: ['aerial','imagery','photo','tif','tiff','raster','orthophoto'], bg:'#e8f0f9', fg:'#1a4f8a' },
-    { label: 'Boundaries',    keys: ['boundary','parcel','zoning','municipal','district','ward','jurisdiction','borough','township'], bg:'#eaf3de', fg:'#3b6d11' },
-    { label: 'Transportation',keys: ['road','trail','transit','bridge','transportation','railway','bike','pedestrian'], bg:'#faeeda', fg:'#854f0b' },
-    { label: 'Environment',   keys: ['water','flood','wetland','environment','natural','stream','hydro','park','tree'], bg:'#e1f5ee', fg:'#0f6e56' },
-    { label: 'Finance',       keys: ['tax','assessment','permit','finance','budget','revenue','spending'], bg:'#fff3e0', fg:'#8a5200' },
-    { label: 'Elections',     keys: ['election','voting','precinct','polling','ballot'], bg:'#eeedfe', fg:'#534ab7' },
-    { label: 'Land use',      keys: ['land use','landuse','land cover','zoning','building','structure','address'], bg:'#fde8f0', fg:'#993556' },
-    { label: 'Demographics',  keys: ['census','population','demographic','household','income'], bg:'#f3e8fd', fg:'#6b3a9e' },
-    { label: 'Emergency',     keys: ['emergency','911','fire','police','ems','hazard','flood'], bg:'#fceaea', fg:'#a32d2d' },
-  ];
-  for (const cat of cats) {
-    if (cat.keys.some(k => kl.includes(k))) return { label: cat.label, bg: cat.bg, fg: cat.fg };
-  }
-  return { label: 'Geospatial', bg: '#f0ede6', fg: '#6b6860' };
+// Primary category = first matching one (you control this by keyword order in Hub)
+function primaryCategory(keywords) {
+  const all = categoriesFor(keywords);
+  return all.length ? all[0] : { label: 'Uncategorized', bg: '#f0ede6', fg: '#6b6860' };
+}
+
+// Keep backwards-compatible alias used elsewhere
+function categoryFor(keywords) { return primaryCategory(keywords); }
+
+// Related = shares at least one category
+function getRelated(d, all, max = 4) {
+  const cats = new Set(categoriesFor(d.keyword).map(c => c.label));
+  return all
+    .filter(x => x !== d && categoriesFor(x.keyword).some(c => cats.has(c.label)))
+    .slice(0, max);
 }
 
 function dedupeByItem(datasets) {
@@ -551,7 +569,7 @@ function renderRecentlyUpdated(datasets) {
   section.style.display = 'block';
 
   container.innerHTML = recent.map((d, i) => {
-    const cat = categoryFor(d.keyword);
+    const cat = primaryCategory(d.keyword);
     const thumb = thumbUrl(d);
     const thumbHtml = thumb
       ? `<img class="recent-thumb" src="${thumb}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
@@ -575,7 +593,8 @@ function renderRecentlyUpdated(datasets) {
 function applyFiltersAndRender() {
   const q = document.getElementById('search').value.toLowerCase().trim();
   filtered = allDatasets.filter(d => {
-    const matchCat = activeFilter === 'all' || categoryFor(d.keyword).label === activeFilter;
+    const matchCat = activeFilter === 'all' ||
+      categoriesFor(d.keyword).some(c => c.label === activeFilter);
     const matchQ = !q || (d.title || '').toLowerCase().includes(q)
       || (d._desc || '').toLowerCase().includes(q)
       || (d.keyword || []).some(k => k.toLowerCase().includes(q));
@@ -606,7 +625,8 @@ function renderPage() {
   }
 
   cards.innerHTML = slice.map((d, i) => {
-    const cat = categoryFor(d.keyword);
+    const cats = categoriesFor(d.keyword);
+    const primaryCat = cats.length ? cats[0] : { label: 'Uncategorized', bg: '#f0ede6', fg: '#6b6860' };
     const fmts = getFormats(d.distribution);
     const desc = d._desc ? d._desc.substring(0, 130) + (d._desc.length > 130 ? '…' : '') : 'No description available.';
     const thumb = thumbUrl(d);
@@ -614,12 +634,16 @@ function renderPage() {
       ? `<img class="card-thumb" src="${thumb}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
         + `<div class="card-thumb-placeholder" style="display:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 9 5-5 4 4 3-3 6 6"/></svg></div>`
       : '';
+    // Show all matching category tags, primary first
+    const catTags = cats.length
+      ? cats.map(c => `<span class="tag" style="background:${c.bg};color:${c.fg}">${c.label}</span>`).join('')
+      : `<span class="tag" style="background:#f0ede6;color:#6b6860">Uncategorized</span>`;
     return `<div class="dataset-card" role="listitem" onclick="openModal('${start + i}')" tabindex="0"
       onkeydown="if(event.key==='Enter'||event.key===' ')openModal('${start + i}')">
       ${thumbHtml}
       <div class="card-main">
         <div class="card-meta">
-          <span class="tag" style="background:${cat.bg};color:${cat.fg}">${cat.label}</span>
+          ${catTags}
           <span class="card-updated">Updated ${fmtDateShort(d.modified)}</span>
         </div>
         <p class="card-title">${d.title || 'Untitled'}</p>
@@ -685,7 +709,8 @@ function openModal(idx) {
 
 function renderModal(d) {
   const fmts = getFormats(d.distribution);
-  const cat = categoryFor(d.keyword);
+  const cats = categoriesFor(d.keyword);
+  const cat = cats.length ? cats[0] : { label: 'Uncategorized', bg: '#f0ede6', fg: '#6b6860' };
   const geoSvc = (d.distribution || []).find(x => x.title === 'ArcGIS GeoService');
   const hubUrl = d.landingPage || '#';
   const thumb = thumbUrl(d);
@@ -694,7 +719,7 @@ function renderModal(d) {
   document.getElementById('modal-body').innerHTML = `
     <div class="modal-header">
       <div style="flex:1;min-width:0">
-        <span class="tag" style="background:${cat.bg};color:${cat.fg};margin-bottom:8px;display:inline-flex">${cat.label}</span>
+        ${cats.length ? cats.map(c => `<span class="tag" style="background:${c.bg};color:${c.fg};margin-bottom:8px;margin-right:4px;display:inline-flex">${c.label}</span>`).join('') : '<span class="tag" style="background:#f0ede6;color:#6b6860;margin-bottom:8px;display:inline-flex">Uncategorized</span>'}
         <h2 id="modal-title" style="font-size:18px;font-weight:600;line-height:1.35;margin-top:6px">${d.title || 'Untitled'}</h2>
         <p style="font-size:12px;color:var(--text-faint);margin-top:4px">
           ${d.publisher ? d.publisher.name : 'Montgomery County'} ·
@@ -771,18 +796,22 @@ document.addEventListener('keydown', e => {
 // ── Filters bar ──────────────────────────────────────────────────────────────
 
 function buildFilters() {
+  // Count datasets per category (a dataset can appear in multiple)
   const counts = {};
   allDatasets.forEach(d => {
-    const label = categoryFor(d.keyword).label;
-    counts[label] = (counts[label] || 0) + 1;
+    categoriesFor(d.keyword).forEach(c => {
+      counts[c.label] = (counts[c.label] || 0) + 1;
+    });
   });
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7).map(x => x[0]);
+
+  // Show only categories that have at least one dataset, in official order
+  const active = CATEGORY_NAMES.filter(c => counts[c]);
 
   const row = document.getElementById('filters-row');
   row.style.display = 'flex';
   row.innerHTML = `<span class="filters-label">Filter:</span>
     <button class="filter-btn active" onclick="setFilter('all', this)">All <span style="opacity:.6;font-size:11px">${allDatasets.length}</span></button>
-    ${top.map(c => `<button class="filter-btn" onclick="setFilter('${c}', this)">${c} <span style="opacity:.6;font-size:11px">${counts[c]}</span></button>`).join('')}`;
+    ${active.map(c => `<button class="filter-btn" onclick="setFilter('${c}', this)">${c} <span style="opacity:.6;font-size:11px">${counts[c]}</span></button>`).join('')}`;
 }
 
 function setFilter(f, el) {
