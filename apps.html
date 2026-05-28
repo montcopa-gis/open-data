@@ -314,7 +314,7 @@ async function loadThumbnails() {
       if (!res.ok) return;
       const json = await res.json();
       if (json.thumbnail) {
-        app.thumb = `https://www.arcgis.com/sharing/rest/content/items/${app.itemId}/info/${json.thumbnail}`;
+        app.thumb = `https://www.arcgis.com/sharing/rest/content/items/${app.itemId}/info/${json.thumbnail}?w=400`;
       }
     } catch { /* fail silently */ }
   }));
