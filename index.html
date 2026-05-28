@@ -441,12 +441,35 @@ function getFormats(dist) {
   });
 }
 
-// Extract ArcGIS item ID from the identifier URL and build thumbnail URL
-function thumbUrl(d) {
+// Extract ArcGIS item ID from identifier URL
+function itemId(d) {
   const m = (d.identifier || '').match(/[?&]id=([a-f0-9]{32})/i)
          || (d.identifier || '').match(/items\/([a-f0-9]{32})/i);
-  if (!m) return null;
-  return `https://www.arcgis.com/sharing/rest/content/items/${m[1]}/info/thumbnail`;
+  return m ? m[1] : null;
+}
+
+// Return thumbnail URL using pre-fetched _thumb property
+function thumbUrl(d) {
+  return d._thumb || null;
+}
+
+// Fetch item JSON in batches and attach ._thumb to each dataset
+async function enrichThumbnails(datasets) {
+  const ids = [...new Set(datasets.map(itemId).filter(Boolean))];
+  const CHUNK = 10;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const chunk = ids.slice(i, i + CHUNK);
+    await Promise.all(chunk.map(async id => {
+      try {
+        const res = await fetch(`https://www.arcgis.com/sharing/rest/content/items/${id}?f=json`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!json.thumbnail) return;
+        const url = `https://www.arcgis.com/sharing/rest/content/items/${id}/info/${json.thumbnail}`;
+        datasets.forEach(d => { if (itemId(d) === id) d._thumb = url; });
+      } catch { /* fail silently */ }
+    }));
+  }
 }
 
 // Find related datasets by shared keywords/category
@@ -832,6 +855,12 @@ async function fetchFeed() {
   raw = dedupeByItem(raw);
   raw = raw.filter(isRealDataset);
   raw = raw.map(d => ({ ...d, _desc: stripHtml(d.description || '') }));
+  // Enrich thumbnails in background — re-render + update cache when done
+  enrichThumbnails(raw).then(() => {
+    saveCache(raw);
+    renderRecentlyUpdated(raw);
+    renderPage();
+  });
   return raw;
 }
 
