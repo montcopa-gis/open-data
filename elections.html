@@ -87,7 +87,7 @@
     .precinct-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 20px; flex-shrink: 0; text-transform: uppercase; letter-spacing: .04em; }
 
     /* ── Map ── */
-    #map { flex: 1; min-height: 0; z-index: 1; }
+    #map { flex: 1; min-height: 500px; height: 100%; z-index: 1; }
 
     /* ── Info panel (hover) ── */
     .info-panel { position: absolute; bottom: 24px; right: 24px; z-index: 500; background: var(--white); border-radius: var(--radius-lg); padding: 1rem 1.25rem; box-shadow: 0 4px 20px rgba(0,0,0,.15); min-width: 220px; max-width: 280px; pointer-events: none; display: none; border-top: 4px solid var(--cobalt); }
@@ -154,11 +154,22 @@
         <h1>Voting Districts — Registered Voters</h1>
         <p class="sub">Party registration by precinct · Live from Montgomery County GIS</p>
       </div>
-      <div class="kpi-row" id="kpi-row">
-        <div class="kpi-pill"><p class="val" id="kpi-precincts">—</p><p class="lbl">Precincts</p></div>
-        <div class="kpi-pill" style="border-color:rgba(33,102,172,.4)"><p class="val" style="color:#7ec8e3" id="kpi-dem">—</p><p class="lbl">Dem Majority</p></div>
-        <div class="kpi-pill" style="border-color:rgba(214,96,77,.4)"><p class="val" style="color:#fab223" id="kpi-rep">—</p><p class="lbl">Rep Majority</p></div>
-        <div class="kpi-pill" style="border-color:rgba(26,150,65,.4)"><p class="val" style="color:#a9dcd6" id="kpi-tie">—</p><p class="lbl">Ties</p></div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        <!-- Precinct majority row -->
+        <div class="kpi-row" id="kpi-row">
+          <div class="kpi-pill"><p class="val" id="kpi-precincts">—</p><p class="lbl">Precincts</p></div>
+          <div class="kpi-pill" style="border-color:rgba(33,102,172,.4)"><p class="val" style="color:#7ec8e3" id="kpi-dem">—</p><p class="lbl">Dem Majority</p></div>
+          <div class="kpi-pill" style="border-color:rgba(214,96,77,.4)"><p class="val" style="color:#fab223" id="kpi-rep">—</p><p class="lbl">Rep Majority</p></div>
+          <div class="kpi-pill" style="border-color:rgba(26,150,65,.4)"><p class="val" style="color:#a9dcd6" id="kpi-tie">—</p><p class="lbl">Ties</p></div>
+        </div>
+        <!-- Total registration row -->
+        <div class="kpi-row" id="kpi-row-totals">
+          <div class="kpi-pill"><p class="val" id="kpi-total-reg" style="font-size:15px">—</p><p class="lbl">Total Registered</p></div>
+          <div class="kpi-pill" style="border-color:rgba(33,102,172,.4)"><p class="val" id="kpi-total-dem" style="color:#7ec8e3;font-size:15px">—</p><p class="lbl">Dem Registered</p></div>
+          <div class="kpi-pill" style="border-color:rgba(214,96,77,.4)"><p class="val" id="kpi-total-rep" style="color:#fab223;font-size:15px">—</p><p class="lbl">Rep Registered</p></div>
+          <div class="kpi-pill" style="border-color:rgba(255,255,255,.2)"><p class="val" id="kpi-total-ind" style="color:rgba(255,255,255,.8);font-size:15px">—</p><p class="lbl">IND Registered</p></div>
+          <div class="kpi-pill" style="border-color:rgba(255,255,255,.2)"><p class="val" id="kpi-total-oth" style="color:rgba(255,255,255,.6);font-size:15px">—</p><p class="lbl">OTH Registered</p></div>
+        </div>
       </div>
     </div>
   </div>
@@ -189,7 +200,7 @@
     </div>
 
     <!-- Map -->
-    <div style="position:relative;flex:1;min-height:0">
+    <div style="position:relative;flex:1;min-height:500px;height:calc(100vh - 230px)">
       <div id="map"></div>
       <div class="map-loading" id="map-loading">
         <div class="spinner"></div>
@@ -417,18 +428,48 @@ function focusPrecinct(idx) {
 }
 
 // ── KPIs ──
+function fmtK(n) {
+  if (!n || isNaN(n)) return '—';
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n/1000).toFixed(0) + 'K';
+  return n.toLocaleString();
+}
+
 function updateKPIs(features) {
   let dem = 0, rep = 0, tie = 0;
+  let totalReg = 0, totalDem = 0, totalRep = 0, totalInd = 0, totalOth = 0;
+
+  // Find IND and OTH field names from first feature
+  const keys = features.length ? Object.keys(features[0].properties) : [];
+  const indField = keys.find(k => k === 'Registered_IND') || keys.find(k => /IND/i.test(k) && /REG/i.test(k)) || null;
+  const othField = keys.find(k => k === 'Registered_OTH') || keys.find(k => /OTH/i.test(k) && /REG/i.test(k)) || null;
+  const totalField = keys.find(k => k === 'Registered_Voters') || keys.find(k => /TOTAL.*VOTER/i.test(k)) || null;
+
   features.forEach(f => {
-    const party = getParty(f.properties);
+    const p = f.properties;
+    const party = getParty(p);
     if (party === 'D') dem++;
     else if (party === 'R') rep++;
     else if (party === 'T') tie++;
+
+    totalDem += parseFloat(p[F.dem]) || 0;
+    totalRep += parseFloat(p[F.rep]) || 0;
+    if (indField) totalInd += parseFloat(p[indField]) || 0;
+    if (othField) totalOth += parseFloat(p[othField]) || 0;
+    if (totalField) totalReg += parseFloat(p[totalField]) || 0;
   });
+
+  if (!totalReg) totalReg = totalDem + totalRep + totalInd + totalOth;
+
   document.getElementById('kpi-precincts').textContent = features.length;
   document.getElementById('kpi-dem').textContent = dem;
   document.getElementById('kpi-rep').textContent = rep;
   document.getElementById('kpi-tie').textContent = tie;
+  document.getElementById('kpi-total-reg').textContent = fmtK(Math.round(totalReg));
+  document.getElementById('kpi-total-dem').textContent = fmtK(Math.round(totalDem));
+  document.getElementById('kpi-total-rep').textContent = fmtK(Math.round(totalRep));
+  document.getElementById('kpi-total-ind').textContent = fmtK(Math.round(totalInd));
+  document.getElementById('kpi-total-oth').textContent = fmtK(Math.round(totalOth));
 }
 
 // colorMode fixed to registration
@@ -459,6 +500,7 @@ function wireGeoJSON(data) {
   }).addTo(map);
 
   map.fitBounds(geojsonLayer.getBounds(), { padding: [20, 20] });
+  setTimeout(() => map.invalidateSize(), 100);
   document.getElementById('map-loading').style.display = 'none';
   updateKPIs(allFeatures);
   buildSidebar(allFeatures);
