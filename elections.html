@@ -115,6 +115,42 @@
     footer a { color: var(--frost); }
     .footer-logo { height: 28px; width: 28px; border-radius: 5px; object-fit: contain; background: white; padding: 2px; }
 
+    /* ── Home button ── */
+    .home-btn {
+      position: absolute;
+      top: 80px;
+      left: 12px;
+      z-index: 500;
+      background: var(--white);
+      border: 2px solid rgba(0,0,0,.2);
+      border-radius: 4px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: none;
+      transition: background .12s;
+    }
+    .home-btn:hover { background: var(--cobalt-lt); }
+    .home-btn svg { width: 16px; height: 16px; stroke: #333; fill: none; stroke-width: 2; }
+
+    /* ── Precinct labels ── */
+    .precinct-label {
+      font-family: var(--font);
+      font-size: 10px;
+      font-weight: 700;
+      color: #1a1915;
+      text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+      white-space: nowrap;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      position: absolute;
+      text-align: center;
+      letter-spacing: .01em;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 768px) {
       .main-area { flex-direction: column; }
@@ -207,6 +243,12 @@
         <div class="spinner"></div>
         <p>Loading voting district data…</p>
       </div>
+      <button class="home-btn" title="Zoom to full extent" onclick="resetExtent()">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </button>
       <div class="info-panel" id="info-panel">
         <p class="info-name" id="info-name">—</p>
         <div style="height:1px;background:var(--border);margin:.5rem 0"></div>
@@ -259,7 +301,13 @@ const colorMode = 'registration'; // always by registration
 let highlightedLayer = null;
 
 // ── Init map ──
-map = L.map('map', { zoomControl: true }).setView([40.15, -75.35], 10);
+const INITIAL_CENTER = [40.15, -75.35];
+const INITIAL_ZOOM = 11;
+map = L.map('map', { zoomControl: true }).setView(INITIAL_CENTER, INITIAL_ZOOM);
+function resetExtent() {
+  map.setView(INITIAL_CENTER, INITIAL_ZOOM);
+}
+
 map.on('click', () => {
   if (highlightedLayer) {
     geojsonLayer.resetStyle(highlightedLayer);
@@ -496,6 +544,35 @@ function updateKPIs(features) {
 // colorMode fixed to registration
 
 // ── Wire up features from GeoJSON ──
+let labelLayer = null;
+const LABEL_ZOOM = 13; // show labels at zoom 13+
+
+function buildLabels() {
+  if (labelLayer) { map.removeLayer(labelLayer); labelLayer = null; }
+  if (map.getZoom() < LABEL_ZOOM) return;
+
+  const markers = allFeatures.map(f => {
+    const name = f.properties['Precinct_Name'] || f.properties[F.name] || '';
+    if (!name) return null;
+    try {
+      const layer = L.geoJSON(f);
+      const center = layer.getBounds().getCenter();
+      return L.marker(center, {
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="precinct-label">${name}</div>`,
+          iconSize: null,
+          iconAnchor: null,
+        }),
+        interactive: false,
+        keyboard: false,
+      });
+    } catch { return null; }
+  }).filter(Boolean);
+
+  labelLayer = L.layerGroup(markers).addTo(map);
+}
+
 function wireGeoJSON(data) {
   allFeatures = data.features || [];
   if (!allFeatures.length) throw new Error('No features returned');
@@ -513,7 +590,9 @@ function wireGeoJSON(data) {
           showInfo(feature.properties);
         },
         mouseout: () => {
-          if (layer !== highlightedLayer) geojsonLayer.resetStyle(layer);
+          if (layer !== highlightedLayer) {
+            layer.setStyle(styleFeature(feature));
+          }
         },
         click: () => focusPrecinct(allFeatures.indexOf(feature))
       });
@@ -526,6 +605,9 @@ function wireGeoJSON(data) {
   updateKPIs(allFeatures);
   buildSidebar(allFeatures);
   document.getElementById('precinct-search').addEventListener('input', e => buildSidebar(allFeatures, e.target.value));
+
+  // Build labels on zoom change
+  map.on('zoomend', buildLabels);
 }
 
 // ── Load data — tries direct fetch, then CORS proxy, then esri-leaflet ──
