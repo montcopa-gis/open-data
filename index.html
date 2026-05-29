@@ -644,7 +644,15 @@ function renderModal(d) {
       ${geoSvc?`<a class="btn-dl" href="${geoSvc.accessURL}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>GeoService</a>`:''}
       <a class="btn-dl btn-hub" href="${hubUrl}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>View on Hub</a>
     </div>
-    ${geoSvc?`<p class="modal-section-label">ArcGIS REST endpoint</p><div class="code-block">${geoSvc.accessURL}</div>`:''}
+    ${categoriesFor(d.keyword).some(c=>c.label==='Parcels') ? `
+    <p class="modal-section-label">Reference documents</p>
+    <div style="margin-bottom:1.25rem">
+      <a class="btn-dl" href="https://montcopa.maps.arcgis.com/sharing/rest/content/items/c47e63a20eba41f69d370e6f4498bdbb/data" target="_blank" rel="noopener" style="display:inline-flex">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>
+        Parcel Codes Reference (PDF)
+      </a>
+    </div>` : ''}
+    ${geoSvc?`<p class="modal-section-label">ArcGIS REST endpoint</p><div class="code-block">${geoSvc.accessURL}</div>`:''}`
     ${d.spatial?`<p class="modal-section-label" style="margin-top:1rem">Spatial extent</p><div class="code-block"><span class="code-comment">// bounding box (minLon, minLat, maxLon, maxLat)</span>\n${d.spatial}</div>`:''}
     ${related.length?`<p class="modal-section-label" style="margin-top:1.25rem">Related datasets</p><div class="related-grid">${related.map(r=>{const rc=categoryFor(r.keyword),ri=allDatasets.indexOf(r);return`<div class="related-card" onclick="renderModal(allDatasets[${ri}])" tabindex="0"><p class="related-card-title">${r.title||'Untitled'}</p><p class="related-card-cat">${rc.label} · ${fmtDateShort(r.modified)}</p></div>`;}).join('')}</div>`:''}
   `;
