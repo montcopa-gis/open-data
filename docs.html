@@ -7,27 +7,11 @@
   <meta name="description" content="Reports, summaries and planning documents published by Montgomery County, Pennsylvania.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --bg: #f7f6f2;
-      --surface: #ffffff;
-      --surface2: #f0ede6;
-      --border: rgba(0,0,0,0.10);
-      --border-med: rgba(0,0,0,0.18);
-      --text: #1a1915;
-      --text-muted: #6b6860;
-      --text-faint: #a09e98;
-      --accent: #1a4f8a;
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 14px;
-      --font: 'DM Sans', system-ui, sans-serif;
-    }
-
-    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.5; }
+    :root_PLACEHOLDER body { font-family: var(--font); }
 
     /* ── Header ── */
     header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; position: sticky; top: 0; z-index: 50; }
@@ -120,20 +104,18 @@
 <header>
   <div class="header-inner">
     <a class="header-brand" href="index.html">
-      <div class="brand-seal" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z"/></svg>
-      </div>
+      <img class="brand-logo" src="Logo_Vertical_Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
       <div class="brand-text">
         <span class="brand-county">Montgomery County, PA</span>
         <span class="brand-title">Open Data Portal</span>
       </div>
     </a>
-    <nav style="display:flex;gap:4px">
-      <a class="header-link" href="index.html">Datasets</a>
-      <a class="header-link" href="apps.html">Apps & Tools</a>
-      <a class="header-link active" href="docs.html">Documents</a>
-      <a class="header-link" href="https://mcpa-montcopa.opendata.arcgis.com" target="_blank" rel="noopener">ArcGIS Hub</a>
-      <a class="header-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
+    <nav>
+      <a class="nav-link" href="index.html">Datasets</a>
+      <a class="nav-link " href="apps.html">Apps &amp; Tools</a>
+      <a class="nav-link active" href="docs.html">Documents</a>
+      <a class="nav-link" href="https://mcpa-montcopa.opendata.arcgis.com" target="_blank" rel="noopener">ArcGIS Hub</a>
+      <a class="nav-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
     </nav>
   </div>
 </header>
@@ -167,8 +149,16 @@
 </main>
 
 <footer>
-  <p>Documents published by Montgomery County departments.
-  For GIS datasets visit the <a href="index.html">Open Data Portal</a> or <a href="apps.html">Apps & Tools</a>.</p>
+  <div class="footer-inner">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img class="footer-logo" src="Logo_Vertical_Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
+      <div>
+        <p style="color:#fff;font-weight:600;font-size:13px">Montgomery County, PA</p>
+        <p style="font-size:12px">Open Data Portal</p>
+      </div>
+    </div>
+    <p style="font-size:12px">Documents published by Montgomery County departments. Visit the <a href="index.html">Open Data Portal</a> for datasets.</p>
+  </div>
 </footer>
 
 <script>
