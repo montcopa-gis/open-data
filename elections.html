@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elections — Montgomery County, PA Open Data Portal</title>
+  <meta name="description" content="Interactive voting district map for Montgomery County, PA showing registered voter party affiliation by precinct.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cobalt: #03425c; --cobalt-dk: #022e40; --cobalt-lt: #e6f0f5;
+      --marigold: #fab223; --frost: #a9dcd6; --evergreen: #223F33;
+      --linen-lt: #faf6f0; --white: #ffffff;
+      --text: #1a1915; --text-muted: #4a4845; --text-faint: #8a8780;
+      --border: rgba(3,66,92,0.10); --border-med: rgba(3,66,92,0.20);
+      --dem: #2166ac; --dem-lt: #d1e5f0;
+      --rep: #d6604d; --rep-lt: #fddbc7;
+      --tie: #1a9641; --tie-lt: #d9f0c4;
+      --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+      --font: 'Montserrat', system-ui, sans-serif;
+    }
+    body { font-family: var(--font); background: var(--linen-lt); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Header ── */
+    header { background: var(--cobalt); padding: 0 2rem; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 12px rgba(0,0,0,.2); flex-shrink: 0; }
+    .header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 1rem; }
+    .header-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .brand-logo { height: 40px; width: 40px; border-radius: 8px; object-fit: contain; background: white; padding: 2px; }
+    .brand-text { display: flex; flex-direction: column; }
+    .brand-county { font-size: 10px; font-weight: 600; letter-spacing: .1em; color: var(--frost); text-transform: uppercase; }
+    .brand-title { font-size: 14px; font-weight: 700; color: var(--white); line-height: 1.2; }
+    nav { display: flex; gap: 2px; }
+    .nav-link { font-family: var(--font); font-size: 13px; font-weight: 500; color: rgba(255,255,255,.75); text-decoration: none; padding: 6px 12px; border-radius: var(--radius-sm); transition: background .12s, color .12s; white-space: nowrap; }
+    .nav-link:hover { background: rgba(255,255,255,.1); color: #fff; }
+    .nav-link.active { color: var(--marigold); }
+
+    /* ── Page layout ── */
+    .page-wrap { display: flex; flex-direction: column; flex: 1; }
+
+    /* ── Sub-header ── */
+    .sub-header { background: linear-gradient(135deg, var(--cobalt) 0%, var(--cobalt-dk) 60%, var(--evergreen) 100%); padding: 1.5rem 2rem; flex-shrink: 0; }
+    .sub-header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .sub-header-text p.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .1em; color: var(--marigold); text-transform: uppercase; margin-bottom: 4px; }
+    .sub-header-text h1 { font-size: 22px; font-weight: 700; color: #fff; }
+    .sub-header-text p.sub { font-size: 13px; color: rgba(255,255,255,.65); margin-top: 3px; }
+
+    /* ── KPI pills ── */
+    .kpi-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .kpi-pill { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: var(--radius-md); padding: .5rem .875rem; text-align: center; min-width: 90px; }
+    .kpi-pill .val { font-size: 18px; font-weight: 700; color: var(--marigold); line-height: 1; }
+    .kpi-pill .lbl { font-size: 9px; font-weight: 600; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
+
+    /* ── Main area ── */
+    .main-area { display: flex; flex: 1; min-height: 0; max-width: 100%; }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 320px; flex-shrink: 0; background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+    .sidebar-top { padding: 1rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .sidebar-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--cobalt); margin-bottom: .75rem; }
+
+    /* ── Color mode toggle ── */
+    .toggle-row { display: flex; background: var(--cobalt-lt); border-radius: var(--radius-sm); padding: 3px; margin-bottom: .875rem; }
+    .toggle-btn { flex: 1; font-family: var(--font); font-size: 11px; font-weight: 600; padding: 5px 8px; border: none; border-radius: 4px; background: transparent; color: var(--cobalt); cursor: pointer; transition: all .15s; text-align: center; }
+    .toggle-btn.active { background: var(--cobalt); color: #fff; }
+
+    /* ── Search ── */
+    .search-wrap { position: relative; margin-bottom: .75rem; }
+    .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--text-faint); fill: none; pointer-events: none; }
+    #precinct-search { width: 100%; padding: 8px 10px 8px 30px; font-family: var(--font); font-size: 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--linen-lt); color: var(--text); }
+    #precinct-search:focus { outline: 2px solid var(--marigold); border-color: transparent; }
+
+    /* ── Legend ── */
+    .legend { display: flex; gap: 6px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── Precinct list ── */
+    .precinct-list { flex: 1; overflow-y: auto; }
+    .precinct-item { padding: .625rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background .1s; }
+    .precinct-item:hover { background: var(--cobalt-lt); }
+    .precinct-item.highlighted { background: var(--cobalt-lt); border-left: 3px solid var(--cobalt); }
+    .precinct-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .precinct-info { flex: 1; min-width: 0; }
+    .precinct-name { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; }
+    .precinct-stats { font-size: 11px; color: var(--text-faint); font-weight: 500; margin-top: 1px; }
+    .precinct-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 20px; flex-shrink: 0; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* ── Map ── */
+    #map { flex: 1; min-height: 0; z-index: 1; }
+
+    /* ── Info panel (hover) ── */
+    .info-panel { position: absolute; bottom: 24px; right: 24px; z-index: 500; background: var(--white); border-radius: var(--radius-lg); padding: 1rem 1.25rem; box-shadow: 0 4px 20px rgba(0,0,0,.15); min-width: 220px; max-width: 280px; pointer-events: none; display: none; border-top: 4px solid var(--cobalt); }
+    .info-panel.show { display: block; }
+    .info-name { font-size: 13px; font-weight: 700; color: var(--cobalt); margin-bottom: 8px; line-height: 1.3; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .info-label { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+    .info-value { font-size: 12px; font-weight: 700; color: var(--text); }
+    .info-bar-wrap { margin-top: 8px; }
+    .info-bar-track { height: 8px; background: var(--border); border-radius: 20px; overflow: hidden; display: flex; }
+    .info-bar-dem { background: var(--dem); height: 100%; transition: width .3s; }
+    .info-bar-rep { background: var(--rep); height: 100%; transition: width .3s; }
+    .info-bar-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; font-weight: 600; }
+
+    /* ── Loading overlay ── */
+    .map-loading { position: absolute; inset: 0; background: rgba(255,255,255,.85); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border-med); border-top-color: var(--cobalt); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .map-loading p { font-size: 13px; font-weight: 600; color: var(--cobalt); }
+
+    /* ── Footer ── */
+    footer { background: var(--cobalt); color: rgba(255,255,255,.6); padding: 1.25rem 2rem; flex-shrink: 0; }
+    .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    footer a { color: var(--frost); }
+    .footer-logo { height: 28px; width: 28px; border-radius: 5px; object-fit: contain; background: white; padding: 2px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .main-area { flex-direction: column; }
+      .sidebar { width: 100%; height: 220px; border-right: none; border-bottom: 1px solid var(--border); }
+      #map { min-height: 400px; }
+      nav .nav-link { font-size: 11px; padding: 5px 7px; }
+      header { padding: 0 1rem; }
+      .sub-header { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="header-brand" href="index.html">
+      <img class="brand-logo" src="Logo_Vertical_Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
+      <div class="brand-text">
+        <span class="brand-county">Montgomery County, PA</span>
+        <span class="brand-title">Open Data Portal</span>
+      </div>
+    </a>
+    <nav>
+      <a class="nav-link" href="index.html">Datasets</a>
+      <a class="nav-link active" href="elections.html">Elections</a>
+      <a class="nav-link" href="apps.html">Apps &amp; Tools</a>
+      <a class="nav-link" href="docs.html">Documents</a>
+      <a class="nav-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page-wrap">
+  <div class="sub-header">
+    <div class="sub-header-inner">
+      <div class="sub-header-text">
+        <p class="eyebrow">Montgomery County, Pennsylvania</p>
+        <h1>Voting Districts — Registered Voters</h1>
+        <p class="sub">Party registration by precinct · Live from Montgomery County GIS</p>
+      </div>
+      <div class="kpi-row" id="kpi-row">
+        <div class="kpi-pill"><p class="val" id="kpi-precincts">—</p><p class="lbl">Precincts</p></div>
+        <div class="kpi-pill" style="border-color:rgba(33,102,172,.4)"><p class="val" style="color:#7ec8e3" id="kpi-dem">—</p><p class="lbl">Dem Majority</p></div>
+        <div class="kpi-pill" style="border-color:rgba(214,96,77,.4)"><p class="val" style="color:#fab223" id="kpi-rep">—</p><p class="lbl">Rep Majority</p></div>
+        <div class="kpi-pill" style="border-color:rgba(26,150,65,.4)"><p class="val" style="color:#a9dcd6" id="kpi-tie">—</p><p class="lbl">Ties</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <p class="sidebar-title">Voting Precincts</p>
+        <div class="toggle-row">
+          <button class="toggle-btn active" id="btn-reg" onclick="setMode('registration',this)">By Registration</button>
+          <button class="toggle-btn" id="btn-field" onclick="setMode('field',this)">By DEM_REP Field</button>
+        </div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="search" id="precinct-search" placeholder="Search precincts…" autocomplete="off">
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#2166ac"></div>Democratic</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#d6604d"></div>Republican</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#1a9641"></div>Tied</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#aaa"></div>No data</div>
+        </div>
+      </div>
+      <div class="precinct-list" id="precinct-list">
+        <div style="padding:2rem;text-align:center;color:var(--text-faint);font-size:13px">
+          <div class="spinner" style="margin:0 auto 12px"></div>
+          Loading precincts…
+        </div>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div style="position:relative;flex:1;min-height:0">
+      <div id="map"></div>
+      <div class="map-loading" id="map-loading">
+        <div class="spinner"></div>
+        <p>Loading voting district data…</p>
+      </div>
+      <div class="info-panel" id="info-panel">
+        <p class="info-name" id="info-name">—</p>
+        <div class="info-row"><span class="info-label">🔵 Democrat registered</span><span class="info-value" id="info-dem">—</span></div>
+        <div class="info-row"><span class="info-label">🔴 Republican registered</span><span class="info-value" id="info-rep">—</span></div>
+        <div class="info-row"><span class="info-label">Total registered</span><span class="info-value" id="info-total">—</span></div>
+        <div class="info-row"><span class="info-label">Majority</span><span class="info-value" id="info-majority">—</span></div>
+        <div class="info-bar-wrap">
+          <div class="info-bar-track">
+            <div class="info-bar-dem" id="info-bar-dem" style="width:50%"></div>
+            <div class="info-bar-rep" id="info-bar-rep" style="width:50%"></div>
+          </div>
+          <div class="info-bar-labels">
+            <span style="color:var(--dem)" id="info-dem-pct">—%</span>
+            <span style="color:var(--rep)" id="info-rep-pct">—%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img class="footer-logo" src="Logo_Vertical_Dark.png" alt="" onerror="this.style.display='none'">
+      <div>
+        <p style="color:#fff;font-weight:600;font-size:13px">Montgomery County, PA</p>
+        <p style="font-size:12px">Data sourced from <a href="https://gis.montcopa.org/arcgis/rest/services/Voters/Montgomery_County_Voting_Districts/FeatureServer/1" target="_blank" rel="noopener">Montgomery County GIS</a></p>
+      </div>
+    </div>
+    <p style="font-size:12px">Visit the <a href="index.html">Open Data Portal</a> for all datasets · <a href="apps.html">Apps &amp; Tools</a></p>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const GEOJSON_URL = 'https://gis.montcopa.org/arcgis/rest/services/Voters/Montgomery_County_Voting_Districts/FeatureServer/1/query?outFields=*&where=1%3D1&f=geojson';
+
+// ── State ──
+let map, geojsonLayer, allFeatures = [], colorMode = 'registration';
+let highlightedLayer = null;
+
+// ── Init map ──
+map = L.map('map', { zoomControl: true }).setView([40.15, -75.35], 10);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd', maxZoom: 19
+}).addTo(map);
+
+// ── Field name sniffing ──
+// The service may use slightly different field names — detect at runtime
+let F = {};
+function detectFields(props) {
+  if (F.dem) return; // already detected
+  const keys = Object.keys(props);
+  // DEM voters
+  F.dem = keys.find(k => /^DEM_REG/i.test(k) || /^DEM_Reg/i.test(k) || k === 'DEM_Registered_Voters' || /DEM.*REG/i.test(k) || k === 'DEMOCRATS') || null;
+  // REP voters
+  F.rep = keys.find(k => /^REP_REG/i.test(k) || /^REP_Reg/i.test(k) || k === 'REP_Registered_Voters' || /REP.*REG/i.test(k) || k === 'REPUBLICANS') || null;
+  // DEM_REP field (pre-coded D/R/T string)
+  F.demrep = keys.find(k => k === 'DEM_REP' || k === 'PARTY' || /^DEM_REP/i.test(k)) || null;
+  // Name field
+  F.name = keys.find(k => /^PRECINCT$/i.test(k) || /^NAME$/i.test(k) || /^DISTRICT/i.test(k) || /^VTD/i.test(k) || /^WARD/i.test(k)) || keys[0];
+  // Total
+  F.total = keys.find(k => /TOTAL/i.test(k) && /REG/i.test(k)) || null;
+  console.log('Detected fields:', F);
+  console.log('All property keys:', keys);
+}
+
+function getParty(props) {
+  if (colorMode === 'field' && F.demrep) {
+    const v = (props[F.demrep] || '').toString().trim().toUpperCase();
+    if (v === 'D' || v === 'DEM' || v === 'DEMOCRAT') return 'D';
+    if (v === 'R' || v === 'REP' || v === 'REPUBLICAN') return 'R';
+    return 'T';
+  }
+  // By registration counts
+  const dem = parseFloat(props[F.dem]) || 0;
+  const rep = parseFloat(props[F.rep]) || 0;
+  if (!dem && !rep) return null;
+  if (dem > rep) return 'D';
+  if (rep > dem) return 'R';
+  return 'T';
+}
+
+function partyColor(party) {
+  if (party === 'D') return '#2166ac';
+  if (party === 'R') return '#d6604d';
+  if (party === 'T') return '#1a9641';
+  return '#aaaaaa';
+}
+
+function styleFeature(feature) {
+  const p = feature.properties;
+  detectFields(p);
+  const party = getParty(p);
+  const color = partyColor(party);
+  return {
+    fillColor: color,
+    fillOpacity: 0.55,
+    color: '#ffffff',
+    weight: 1,
+    opacity: 1,
+  };
+}
+
+function fmtNum(n) { return n != null && !isNaN(n) ? parseInt(n).toLocaleString() : '—'; }
+function getPctStr(dem, rep) {
+  const total = dem + rep;
+  if (!total) return ['—%', '—%'];
+  return [Math.round(dem/total*100)+'%', Math.round(rep/total*100)+'%'];
+}
+
+// ── Info panel ──
+function showInfo(props) {
+  const panel = document.getElementById('info-panel');
+  const name = props[F.name] || 'Voting District';
+  const dem = parseFloat(props[F.dem]) || 0;
+  const rep = parseFloat(props[F.rep]) || 0;
+  const total = F.total ? (parseFloat(props[F.total]) || dem + rep) : dem + rep;
+  const party = getParty(props);
+  const majority = party === 'D' ? 'Democratic' : party === 'R' ? 'Republican' : party === 'T' ? 'Tied' : 'No data';
+  const majorityColor = partyColor(party);
+  const demPct = total ? dem/total : 0.5;
+  const repPct = total ? rep/total : 0.5;
+  const [dp, rp] = getPctStr(dem, rep);
+
+  document.getElementById('info-name').textContent = name;
+  document.getElementById('info-dem').textContent = fmtNum(dem);
+  document.getElementById('info-rep').textContent = fmtNum(rep);
+  document.getElementById('info-total').textContent = fmtNum(total);
+  document.getElementById('info-majority').innerHTML = `<span style="color:${majorityColor};font-weight:700">${majority}</span>`;
+  document.getElementById('info-bar-dem').style.width = (demPct * 100) + '%';
+  document.getElementById('info-bar-rep').style.width = (repPct * 100) + '%';
+  document.getElementById('info-dem-pct').textContent = dp;
+  document.getElementById('info-rep-pct').textContent = rp;
+  panel.classList.add('show');
+}
+
+// ── Sidebar list ──
+function buildSidebar(features, q='') {
+  const ql = q.toLowerCase();
+  const filtered = features.filter(f => {
+    const name = (f.properties[F.name] || '').toString().toLowerCase();
+    return !ql || name.includes(ql);
+  });
+
+  const list = document.getElementById('precinct-list');
+  if (!filtered.length) { list.innerHTML = '<p style="padding:1rem;text-align:center;color:var(--text-faint);font-size:12px">No precincts match.</p>'; return; }
+
+  list.innerHTML = filtered.map((f, i) => {
+    const props = f.properties;
+    const name = props[F.name] || 'District';
+    const dem = parseFloat(props[F.dem]) || 0;
+    const rep = parseFloat(props[F.rep]) || 0;
+    const party = getParty(props);
+    const color = partyColor(party);
+    const label = party === 'D' ? 'DEM' : party === 'R' ? 'REP' : party === 'T' ? 'TIE' : '—';
+    const labelBg = party === 'D' ? 'rgba(33,102,172,.15)' : party === 'R' ? 'rgba(214,96,77,.15)' : 'rgba(26,150,65,.15)';
+    const idx = features.indexOf(f);
+    return `<div class="precinct-item" onclick="focusPrecinct(${idx})" data-idx="${idx}">
+      <div class="precinct-dot" style="background:${color}"></div>
+      <div class="precinct-info">
+        <p class="precinct-name">${name}</p>
+        <p class="precinct-stats">D: ${fmtNum(dem)} · R: ${fmtNum(rep)}</p>
+      </div>
+      <span class="precinct-badge" style="background:${labelBg};color:${color}">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+function focusPrecinct(idx) {
+  const feature = allFeatures[idx];
+  if (!feature) return;
+
+  // Highlight previous
+  if (highlightedLayer) {
+    highlightedLayer.setStyle(styleFeature(highlightedLayer.feature));
+    highlightedLayer.bringToBack();
+  }
+
+  // Find the layer and highlight it
+  geojsonLayer.eachLayer(layer => {
+    if (layer.feature === feature) {
+      layer.setStyle({ fillColor: '#fab223', fillOpacity: 0.8, color: '#03425c', weight: 2 });
+      layer.bringToFront();
+      highlightedLayer = layer;
+      const bounds = layer.getBounds();
+      map.fitBounds(bounds, { padding: [40, 40] });
+      showInfo(feature.properties);
+    }
+  });
+
+  // Highlight sidebar item
+  document.querySelectorAll('.precinct-item').forEach(el => el.classList.remove('highlighted'));
+  const el = document.querySelector(`[data-idx="${idx}"]`);
+  if (el) { el.classList.add('highlighted'); el.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+}
+
+// ── KPIs ──
+function updateKPIs(features) {
+  let dem = 0, rep = 0, tie = 0;
+  features.forEach(f => {
+    const party = getParty(f.properties);
+    if (party === 'D') dem++;
+    else if (party === 'R') rep++;
+    else if (party === 'T') tie++;
+  });
+  document.getElementById('kpi-precincts').textContent = features.length;
+  document.getElementById('kpi-dem').textContent = dem;
+  document.getElementById('kpi-rep').textContent = rep;
+  document.getElementById('kpi-tie').textContent = tie;
+}
+
+// ── Color mode ──
+function setMode(mode, btn) {
+  colorMode = mode;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (geojsonLayer) {
+    geojsonLayer.setStyle(styleFeature.bind(null));
+    geojsonLayer.eachLayer(l => l.setStyle(styleFeature(l.feature)));
+  }
+  buildSidebar(allFeatures, document.getElementById('precinct-search').value);
+  updateKPIs(allFeatures);
+  if (highlightedLayer) highlightedLayer = null;
+}
+
+// ── Load data ──
+async function loadData() {
+  try {
+    const res = await fetch(GEOJSON_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    allFeatures = data.features || [];
+
+    if (!allFeatures.length) throw new Error('No features returned');
+
+    // Detect fields from first feature
+    detectFields(allFeatures[0].properties);
+
+    geojsonLayer = L.geoJSON(data, {
+      style: styleFeature,
+      onEachFeature: (feature, layer) => {
+        layer.on({
+          mouseover: e => {
+            if (layer !== highlightedLayer) {
+              layer.setStyle({ fillOpacity: 0.8, weight: 2, color: '#03425c' });
+              layer.bringToFront();
+            }
+            showInfo(feature.properties);
+          },
+          mouseout: e => {
+            if (layer !== highlightedLayer) {
+              geojsonLayer.resetStyle(layer);
+            }
+          },
+          click: e => {
+            const idx = allFeatures.indexOf(feature);
+            focusPrecinct(idx);
+          }
+        });
+      }
+    }).addTo(map);
+
+    map.fitBounds(geojsonLayer.getBounds(), { padding: [20, 20] });
+
+    document.getElementById('map-loading').style.display = 'none';
+    updateKPIs(allFeatures);
+    buildSidebar(allFeatures);
+
+    // Search wiring
+    document.getElementById('precinct-search').addEventListener('input', e => buildSidebar(allFeatures, e.target.value));
+
+  } catch (err) {
+    document.getElementById('map-loading').innerHTML = `
+      <p style="color:#a32d2d;font-size:14px;font-weight:600;padding:2rem;text-align:center">
+        Failed to load data: ${err.message}<br>
+        <a href="${GEOJSON_URL}" target="_blank" style="color:var(--cobalt)">Try opening the data source directly</a>
+      </p>`;
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
