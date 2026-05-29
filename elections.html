@@ -62,10 +62,7 @@
     .sidebar-top { padding: 1rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .sidebar-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--cobalt); margin-bottom: .75rem; }
 
-    /* ── Color mode toggle ── */
-    .toggle-row { display: flex; background: var(--cobalt-lt); border-radius: var(--radius-sm); padding: 3px; margin-bottom: .875rem; }
-    .toggle-btn { flex: 1; font-family: var(--font); font-size: 11px; font-weight: 600; padding: 5px 8px; border: none; border-radius: 4px; background: transparent; color: var(--cobalt); cursor: pointer; transition: all .15s; text-align: center; }
-    .toggle-btn.active { background: var(--cobalt); color: #fff; }
+
 
     /* ── Search ── */
     .search-wrap { position: relative; margin-bottom: .75rem; }
@@ -171,10 +168,7 @@
     <div class="sidebar">
       <div class="sidebar-top">
         <p class="sidebar-title">Voting Precincts</p>
-        <div class="toggle-row">
-          <button class="toggle-btn active" id="btn-reg" onclick="setMode('registration',this)">By Registration</button>
-          <button class="toggle-btn" id="btn-field" onclick="setMode('field',this)">By DEM_REP Field</button>
-        </div>
+
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input type="search" id="precinct-search" placeholder="Search precincts…" autocomplete="off">
@@ -244,7 +238,8 @@ const GEOJSON_URL = FEATURE_LAYER_URL + '/query?outFields=*&where=1%3D1&f=geojso
 const PROXY_URL = 'https://corsproxy.io/?' + encodeURIComponent(GEOJSON_URL);
 
 // ── State ──
-let map, geojsonLayer, allFeatures = [], colorMode = 'registration';
+let map, geojsonLayer, allFeatures = [];
+const colorMode = 'registration'; // always by registration
 let highlightedLayer = null;
 
 // ── Init map ──
@@ -259,18 +254,34 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
 // The service may use slightly different field names — detect at runtime
 let F = {};
 function detectFields(props) {
-  if (F.dem) return; // already detected
+  if (F.dem) return;
   const keys = Object.keys(props);
-  // DEM voters
-  F.dem = keys.find(k => /^DEM_REG/i.test(k) || /^DEM_Reg/i.test(k) || k === 'DEM_Registered_Voters' || /DEM.*REG/i.test(k) || k === 'DEMOCRATS') || null;
-  // REP voters
-  F.rep = keys.find(k => /^REP_REG/i.test(k) || /^REP_Reg/i.test(k) || k === 'REP_Registered_Voters' || /REP.*REG/i.test(k) || k === 'REPUBLICANS') || null;
-  // DEM_REP field (pre-coded D/R/T string)
-  F.demrep = keys.find(k => k === 'DEM_REP' || k === 'PARTY' || /^DEM_REP/i.test(k)) || null;
-  // Name field
-  F.name = keys.find(k => /^PRECINCT$/i.test(k) || /^NAME$/i.test(k) || /^DISTRICT/i.test(k) || /^VTD/i.test(k) || /^WARD/i.test(k)) || keys[0];
-  // Total
-  F.total = keys.find(k => /TOTAL/i.test(k) && /REG/i.test(k)) || null;
+  // DEM voters — matches Registered_DEM, DEM_Registered_Voters, DEMOCRATS etc
+  F.dem = keys.find(k => k === 'Registered_DEM') ||
+          keys.find(k => /^DEM_REG/i.test(k)) ||
+          keys.find(k => /^Registered.*DEM$/i.test(k)) ||
+          keys.find(k => /DEM.*REG/i.test(k)) ||
+          keys.find(k => k === 'DEMOCRATS') || null;
+  // REP voters — matches Registered_REP, REP_Registered_Voters etc
+  F.rep = keys.find(k => k === 'Registered_REP') ||
+          keys.find(k => /^REP_REG/i.test(k)) ||
+          keys.find(k => /^Registered.*REP$/i.test(k)) ||
+          keys.find(k => /REP.*REG/i.test(k)) ||
+          keys.find(k => k === 'REPUBLICANS') || null;
+  // DEM_REP pre-coded field
+  F.demrep = keys.find(k => k === 'DEM_REP') ||
+             keys.find(k => /^DEM_REP/i.test(k)) || null;
+  // Name — prefer Full_Muni_Name + Ward combo, or Precinct_Name
+  F.muni  = keys.find(k => k === 'Full_Muni_Name') || null;
+  F.ward  = keys.find(k => k === 'Ward') || null;
+  F.name  = keys.find(k => k === 'Precinct_Name') ||
+            keys.find(k => /^PRECINCT$/i.test(k)) ||
+            keys.find(k => /^NAME$/i.test(k)) ||
+            keys.find(k => /^DISTRICT/i.test(k)) || keys[0];
+  // Total registered
+  F.total = keys.find(k => k === 'Registered_Voters') ||
+            keys.find(k => /TOTAL.*REG/i.test(k)) ||
+            keys.find(k => /REG.*TOTAL/i.test(k)) || null;
   console.log('Detected fields:', F);
   console.log('All property keys:', keys);
 }
@@ -303,13 +314,11 @@ function styleFeature(feature) {
   detectFields(p);
   const party = getParty(p);
   const color = partyColor(party);
-  return {
-    fillColor: color,
-    fillOpacity: 0.55,
-    color: '#ffffff',
-    weight: 1,
-    opacity: 1,
-  };
+  return { fillColor: color, fillOpacity: 0.55, color: '#ffffff', weight: 1, opacity: 1 };
+}
+
+function getDisplayName(props) {
+  return (props['Precinct_Name'] || props[F.name] || 'Voting District');
 }
 
 function fmtNum(n) { return n != null && !isNaN(n) ? parseInt(n).toLocaleString() : '—'; }
@@ -322,7 +331,7 @@ function getPctStr(dem, rep) {
 // ── Info panel ──
 function showInfo(props) {
   const panel = document.getElementById('info-panel');
-  const name = props[F.name] || 'Voting District';
+  const name = getDisplayName(props);
   const dem = parseFloat(props[F.dem]) || 0;
   const rep = parseFloat(props[F.rep]) || 0;
   const total = F.total ? (parseFloat(props[F.total]) || dem + rep) : dem + rep;
@@ -353,12 +362,14 @@ function buildSidebar(features, q='') {
     return !ql || name.includes(ql);
   });
 
+  filtered.sort((a, b) => getDisplayName(a.properties).localeCompare(getDisplayName(b.properties)));
+
   const list = document.getElementById('precinct-list');
   if (!filtered.length) { list.innerHTML = '<p style="padding:1rem;text-align:center;color:var(--text-faint);font-size:12px">No precincts match.</p>'; return; }
 
   list.innerHTML = filtered.map((f, i) => {
     const props = f.properties;
-    const name = props[F.name] || 'District';
+    const name = getDisplayName(props);
     const dem = parseFloat(props[F.dem]) || 0;
     const rep = parseFloat(props[F.rep]) || 0;
     const party = getParty(props);
@@ -420,19 +431,7 @@ function updateKPIs(features) {
   document.getElementById('kpi-tie').textContent = tie;
 }
 
-// ── Color mode ──
-function setMode(mode, btn) {
-  colorMode = mode;
-  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  if (geojsonLayer) {
-    geojsonLayer.setStyle(styleFeature.bind(null));
-    geojsonLayer.eachLayer(l => l.setStyle(styleFeature(l.feature)));
-  }
-  buildSidebar(allFeatures, document.getElementById('precinct-search').value);
-  updateKPIs(allFeatures);
-  if (highlightedLayer) highlightedLayer = null;
-}
+// colorMode fixed to registration
 
 // ── Wire up features from GeoJSON ──
 function wireGeoJSON(data) {
