@@ -219,7 +219,7 @@
 <header>
   <div class="header-inner">
     <a class="header-brand" href="index.html">
-      <img class="brand-logo" src="Logo_Vertical_Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
+      <img class="brand-logo" src="Logo%20Vertical%20Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
       <div class="brand-text">
         <span class="brand-county">Montgomery County, PA</span>
         <span class="brand-title">Open Data Portal</span>
@@ -337,7 +337,7 @@
 <footer>
   <div class="footer-inner">
     <div class="footer-brand">
-      <img class="footer-logo" src="Logo_Vertical_Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
+      <img class="footer-logo" src="Logo%20Vertical%20Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
       <div>
         <p style="color:#fff;font-weight:600;font-size:13px">Montgomery County, PA</p>
         <p style="font-size:12px">Open Data Portal</p>
@@ -653,7 +653,7 @@ function renderModal(d) {
         Parcel Codes Reference (PDF)
       </a>
     </div>` : ''}
-    ${geoSvc?`<p class="modal-section-label">ArcGIS REST endpoint</p><div class="code-block">${geoSvc.accessURL}</div>`:''}`
+    ${geoSvc?`<p class="modal-section-label">ArcGIS REST endpoint</p><div class="code-block">${geoSvc.accessURL}</div>`:''}
     ${d.spatial?`<p class="modal-section-label" style="margin-top:1rem">Spatial extent</p><div class="code-block"><span class="code-comment">// bounding box (minLon, minLat, maxLon, maxLat)</span>\n${d.spatial}</div>`:''}
     ${related.length?`<p class="modal-section-label" style="margin-top:1.25rem">Related datasets</p><div class="related-grid">${related.map(r=>{const rc=categoryFor(r.keyword),ri=allDatasets.indexOf(r);return`<div class="related-card" onclick="renderModal(allDatasets[${ri}])" tabindex="0"><p class="related-card-title">${r.title||'Untitled'}</p><p class="related-card-cat">${rc.label} · ${fmtDateShort(r.modified)}</p></div>`;}).join('')}</div>`:''}
   `;

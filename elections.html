@@ -133,7 +133,7 @@
 <header>
   <div class="header-inner">
     <a class="header-brand" href="index.html">
-      <img class="brand-logo" src="Logo_Vertical_Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
+      <img class="brand-logo" src="Logo%20Vertical%20Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
       <div class="brand-text">
         <span class="brand-county">Montgomery County, PA</span>
         <span class="brand-title">Open Data Portal</span>
@@ -225,7 +225,7 @@
 <footer>
   <div class="footer-inner">
     <div style="display:flex;align-items:center;gap:10px">
-      <img class="footer-logo" src="Logo_Vertical_Dark.png" alt="" onerror="this.style.display='none'">
+      <img class="footer-logo" src="Logo%20Vertical%20Dark.png" alt="" onerror="this.style.display='none'">
       <div>
         <p style="color:#fff;font-weight:600;font-size:13px">Montgomery County, PA</p>
         <p style="font-size:12px">Data sourced from <a href="https://gis.montcopa.org/arcgis/rest/services/Voters/Montgomery_County_Voting_Districts/FeatureServer/1" target="_blank" rel="noopener">Montgomery County GIS</a></p>
@@ -236,8 +236,12 @@
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
 <script>
-const GEOJSON_URL = 'https://gis.montcopa.org/arcgis/rest/services/Voters/Montgomery_County_Voting_Districts/FeatureServer/1/query?outFields=*&where=1%3D1&f=geojson';
+const FEATURE_LAYER_URL = 'https://gis.montcopa.org/arcgis/rest/services/Voters/Montgomery_County_Voting_Districts/FeatureServer/1';
+const GEOJSON_URL = FEATURE_LAYER_URL + '/query?outFields=*&where=1%3D1&f=geojson';
+// CORS proxy fallback — used if direct fetch fails
+const PROXY_URL = 'https://corsproxy.io/?' + encodeURIComponent(GEOJSON_URL);
 
 // ── State ──
 let map, geojsonLayer, allFeatures = [], colorMode = 'registration';
@@ -430,58 +434,119 @@ function setMode(mode, btn) {
   if (highlightedLayer) highlightedLayer = null;
 }
 
-// ── Load data ──
+// ── Wire up features from GeoJSON ──
+function wireGeoJSON(data) {
+  allFeatures = data.features || [];
+  if (!allFeatures.length) throw new Error('No features returned');
+  detectFields(allFeatures[0].properties);
+
+  geojsonLayer = L.geoJSON(data, {
+    style: styleFeature,
+    onEachFeature: (feature, layer) => {
+      layer.on({
+        mouseover: () => {
+          if (layer !== highlightedLayer) {
+            layer.setStyle({ fillOpacity: 0.85, weight: 2, color: '#03425c' });
+            layer.bringToFront();
+          }
+          showInfo(feature.properties);
+        },
+        mouseout: () => {
+          if (layer !== highlightedLayer) geojsonLayer.resetStyle(layer);
+        },
+        click: () => focusPrecinct(allFeatures.indexOf(feature))
+      });
+    }
+  }).addTo(map);
+
+  map.fitBounds(geojsonLayer.getBounds(), { padding: [20, 20] });
+  document.getElementById('map-loading').style.display = 'none';
+  updateKPIs(allFeatures);
+  buildSidebar(allFeatures);
+  document.getElementById('precinct-search').addEventListener('input', e => buildSidebar(allFeatures, e.target.value));
+}
+
+// ── Load data — tries direct fetch, then CORS proxy, then esri-leaflet ──
+async function tryFetch(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.json();
+}
+
 async function loadData() {
+  // 1. Try direct GeoJSON fetch
   try {
-    const res = await fetch(GEOJSON_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    allFeatures = data.features || [];
+    console.log('Trying direct fetch...');
+    const data = await tryFetch(GEOJSON_URL);
+    wireGeoJSON(data);
+    return;
+  } catch(e) {
+    console.warn('Direct fetch failed:', e.message);
+  }
 
-    if (!allFeatures.length) throw new Error('No features returned');
+  // 2. Try CORS proxy
+  try {
+    console.log('Trying CORS proxy...');
+    const data = await tryFetch(PROXY_URL);
+    wireGeoJSON(data);
+    return;
+  } catch(e) {
+    console.warn('CORS proxy failed:', e.message);
+  }
 
-    // Detect fields from first feature
-    detectFields(allFeatures[0].properties);
+  // 3. Fall back to esri-leaflet FeatureLayer (no CORS needed, uses ArcGIS REST pagination)
+  try {
+    console.log('Trying esri-leaflet FeatureLayer...');
+    document.getElementById('map-loading').querySelector('p').textContent = 'Loading via ArcGIS REST...';
 
-    geojsonLayer = L.geoJSON(data, {
+    const fl = L.esri.featureLayer({
+      url: FEATURE_LAYER_URL,
       style: styleFeature,
       onEachFeature: (feature, layer) => {
         layer.on({
-          mouseover: e => {
+          mouseover: () => {
             if (layer !== highlightedLayer) {
-              layer.setStyle({ fillOpacity: 0.8, weight: 2, color: '#03425c' });
+              layer.setStyle({ fillOpacity: 0.85, weight: 2, color: '#03425c' });
               layer.bringToFront();
             }
             showInfo(feature.properties);
           },
-          mouseout: e => {
-            if (layer !== highlightedLayer) {
-              geojsonLayer.resetStyle(layer);
-            }
+          mouseout: () => {
+            if (layer !== highlightedLayer) fl.resetStyle(layer);
           },
-          click: e => {
-            const idx = allFeatures.indexOf(feature);
-            focusPrecinct(idx);
+          click: () => {
+            const idx = allFeatures.findIndex(f => f.properties.OBJECTID === feature.properties.OBJECTID || f === feature);
+            if (idx >= 0) focusPrecinct(idx);
           }
         });
       }
-    }).addTo(map);
+    });
 
-    map.fitBounds(geojsonLayer.getBounds(), { padding: [20, 20] });
+    fl.on('load', () => {
+      // Collect all features from the layer
+      fl.eachFeature(layer => { if (layer.feature) allFeatures.push(layer.feature); });
+      if (allFeatures.length) {
+        detectFields(allFeatures[0].properties);
+        geojsonLayer = fl;
+        map.fitBounds(fl.getBounds(), { padding: [20, 20] });
+        document.getElementById('map-loading').style.display = 'none';
+        updateKPIs(allFeatures);
+        buildSidebar(allFeatures);
+        document.getElementById('precinct-search').addEventListener('input', e => buildSidebar(allFeatures, e.target.value));
+      }
+    });
 
-    document.getElementById('map-loading').style.display = 'none';
-    updateKPIs(allFeatures);
-    buildSidebar(allFeatures);
+    fl.on('requesterror', e => { throw new Error(e.error.message); });
+    fl.addTo(map);
 
-    // Search wiring
-    document.getElementById('precinct-search').addEventListener('input', e => buildSidebar(allFeatures, e.target.value));
-
-  } catch (err) {
+  } catch(e) {
+    console.error('esri-leaflet failed:', e.message);
     document.getElementById('map-loading').innerHTML = `
-      <p style="color:#a32d2d;font-size:14px;font-weight:600;padding:2rem;text-align:center">
-        Failed to load data: ${err.message}<br>
-        <a href="${GEOJSON_URL}" target="_blank" style="color:var(--cobalt)">Try opening the data source directly</a>
-      </p>`;
+      <div style="padding:2rem;text-align:center">
+        <p style="color:#a32d2d;font-size:14px;font-weight:600;margin-bottom:8px">Could not load voting district data.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">This may be a CORS issue. Ask your ArcGIS Server admin to allow <strong>montcopa-gis.github.io</strong> in Server Manager → Security → CORS.</p>
+        <a href="${GEOJSON_URL}" target="_blank" style="font-size:12px;color:var(--cobalt);font-weight:600">Try data source directly ↗</a>
+      </div>`;
   }
 }
 
