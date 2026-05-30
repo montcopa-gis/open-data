@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Election Archive — Montgomery County, PA</title>
+  <meta name="description" content="Historical general election results by precinct for Montgomery County, Pennsylvania.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cobalt:#03425c; --cobalt-dk:#022e40; --cobalt-lt:#e6f0f5;
+      --marigold:#fab223; --frost:#a9dcd6; --evergreen:#223F33;
+      --linen-lt:#faf6f0; --white:#ffffff;
+      --text:#1a1915; --text-muted:#4a4845; --text-faint:#8a8780;
+      --border:rgba(3,66,92,0.10); --border-med:rgba(3,66,92,0.20);
+      --dem:#2166ac; --rep:#d6604d; --other:#888; --tie:#1a9641;
+      --radius-sm:6px; --radius-md:10px; --radius-lg:14px;
+      --font:'Montserrat',system-ui,sans-serif;
+    }
+    html, body { height:100%; overflow:hidden; font-family:var(--font); background:var(--linen-lt); color:var(--text); font-size:15px; }
+    body { display:flex; flex-direction:column; }
+
+    /* ── Header ── */
+    header { background:var(--cobalt); padding:0 2rem; flex-shrink:0; box-shadow:0 2px 12px rgba(0,0,0,.2); z-index:100; }
+    .header-inner { max-width:100%; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px; gap:1rem; }
+    .header-brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .brand-logo { height:36px; width:36px; border-radius:7px; object-fit:contain; background:white; padding:2px; }
+    .brand-text { display:flex; flex-direction:column; }
+    .brand-county { font-size:9px; font-weight:600; letter-spacing:.1em; color:var(--frost); text-transform:uppercase; }
+    .brand-title { font-size:13px; font-weight:700; color:var(--white); line-height:1.2; }
+    nav { display:flex; gap:2px; }
+    .nav-link { font-family:var(--font); font-size:12px; font-weight:500; color:rgba(255,255,255,.75); text-decoration:none; padding:5px 10px; border-radius:var(--radius-sm); transition:background .12s,color .12s; white-space:nowrap; }
+    .nav-link:hover { background:rgba(255,255,255,.1); color:#fff; }
+    .nav-link.active { color:var(--marigold); }
+
+    /* ── Sub-header / controls ── */
+    .sub-header { background:linear-gradient(135deg,var(--cobalt) 0%,var(--cobalt-dk) 60%,var(--evergreen) 100%); padding:1rem 2rem; flex-shrink:0; }
+    .sub-inner { max-width:100%; display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+    .sub-title { color:#fff; font-size:15px; font-weight:700; white-space:nowrap; }
+    .sub-title span { color:var(--marigold); }
+
+    /* ── Dropdowns ── */
+    .ctrl-group { display:flex; align-items:center; gap:8px; }
+    .ctrl-label { font-size:11px; font-weight:600; color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; }
+    .ctrl-select { font-family:var(--font); font-size:13px; font-weight:500; padding:7px 12px; border-radius:var(--radius-sm); border:1.5px solid rgba(255,255,255,.2); background:rgba(255,255,255,.1); color:#fff; cursor:pointer; min-width:160px; max-width:300px; }
+    .ctrl-select option { background:var(--cobalt-dk); color:#fff; }
+    .ctrl-select:focus { outline:2px solid var(--marigold); }
+    .ctrl-select:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* ── KPI pills ── */
+    .kpi-row { display:flex; gap:8px; margin-left:auto; flex-wrap:wrap; }
+    .kpi-pill { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); border-radius:var(--radius-md); padding:.3rem .75rem; text-align:center; }
+    .kpi-pill .val { font-size:16px; font-weight:700; color:var(--marigold); line-height:1; }
+    .kpi-pill .lbl { font-size:9px; font-weight:600; color:rgba(255,255,255,.55); text-transform:uppercase; letter-spacing:.07em; margin-top:2px; }
+
+    /* ── Main area ── */
+    .main-area { display:flex; flex:1; min-height:0; overflow:hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar { width:280px; flex-shrink:0; background:var(--white); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+    .sidebar-top { padding:.875rem; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .sidebar-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--cobalt); margin-bottom:.75rem; }
+    .search-wrap { position:relative; }
+    .search-wrap svg { position:absolute; left:9px; top:50%; transform:translateY(-50%); width:13px; height:13px; stroke:var(--text-faint); fill:none; pointer-events:none; }
+    #precinct-search { width:100%; padding:7px 9px 7px 28px; font-family:var(--font); font-size:12px; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--linen-lt); color:var(--text); }
+    #precinct-search:focus { outline:2px solid var(--marigold); border-color:transparent; }
+    .legend { display:flex; gap:6px; flex-wrap:wrap; margin-top:.75rem; }
+    .legend-item { display:flex; align-items:center; gap:4px; font-size:11px; font-weight:500; color:var(--text-muted); }
+    .legend-swatch { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+    .precinct-list { flex:1; overflow-y:auto; }
+    .precinct-item { padding:.5rem .875rem; border-bottom:1px solid var(--border); cursor:pointer; display:flex; align-items:center; gap:8px; transition:background .1s; }
+    .precinct-item:hover { background:var(--cobalt-lt); }
+    .precinct-item.highlighted { background:var(--cobalt-lt); border-left:3px solid var(--cobalt); }
+    .precinct-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+    .precinct-info { flex:1; min-width:0; }
+    .precinct-name { font-size:11px; font-weight:600; color:var(--text); line-height:1.3; }
+    .precinct-winner { font-size:10px; color:var(--text-faint); font-weight:500; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .precinct-badge { font-size:9px; font-weight:700; padding:2px 6px; border-radius:20px; flex-shrink:0; text-transform:uppercase; }
+
+    /* ── Map ── */
+    #map { flex:1; height:100%; z-index:1; }
+
+    /* ── Info panel ── */
+    .info-panel { position:absolute; top:12px; right:12px; z-index:500; background:var(--white); border-radius:var(--radius-lg); padding:.875rem 1rem; box-shadow:0 4px 20px rgba(0,0,0,.15); min-width:240px; max-width:290px; pointer-events:none; display:none; border-top:4px solid var(--cobalt); }
+    .info-panel.show { display:block; }
+    .info-name { font-size:13px; font-weight:700; color:var(--cobalt); margin-bottom:6px; line-height:1.3; }
+    .info-divider { height:1px; background:var(--border); margin:.5rem 0; }
+    .info-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+    .info-label { font-size:11px; font-weight:500; color:var(--text-muted); }
+    .info-value { font-size:12px; font-weight:700; color:var(--text); }
+    .info-bar-track { height:8px; background:var(--border); border-radius:20px; overflow:hidden; display:flex; margin-top:6px; }
+    .info-bar-dem { background:var(--dem); height:100%; transition:width .3s; }
+    .info-bar-rep { background:var(--rep); height:100%; transition:width .3s; }
+    .info-bar-oth { background:var(--other); height:100%; }
+    .info-bar-labels { display:flex; justify-content:space-between; margin-top:3px; font-size:10px; font-weight:600; }
+    .cand-row { display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px solid var(--border); }
+    .cand-row:last-child { border-bottom:none; }
+    .cand-name { font-size:11px; color:var(--text-muted); font-weight:500; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .cand-votes { font-size:11px; font-weight:700; color:var(--text); }
+    .cand-winner { font-size:9px; font-weight:700; padding:1px 5px; border-radius:10px; margin-left:4px; }
+
+    /* ── Loading ── */
+    .map-loading { position:absolute; inset:0; background:rgba(255,255,255,.88); z-index:999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+    .spinner { width:28px; height:28px; border:2px solid var(--border-med); border-top-color:var(--cobalt); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .map-loading p { font-size:13px; font-weight:600; color:var(--cobalt); }
+    .map-loading small { font-size:11px; color:var(--text-faint); }
+
+    /* ── Home btn ── */
+    .home-btn { position:absolute; top:80px; left:12px; z-index:500; background:var(--white); border:2px solid rgba(0,0,0,.2); border-radius:4px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .12s; }
+    .home-btn:hover { background:var(--cobalt-lt); }
+    .home-btn svg { width:15px; height:15px; stroke:#333; fill:none; stroke-width:2; }
+
+    @media (max-width:768px) { .main-area { flex-direction:column; } .sidebar { width:100%; height:200px; border-right:none; border-bottom:1px solid var(--border); } #map { min-height:400px; } .sub-inner { gap:.625rem; } .ctrl-select { min-width:120px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="header-brand" href="index.html">
+      <img class="brand-logo" src="Logo%20Vertical%20Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
+      <div class="brand-text">
+        <span class="brand-county">Montgomery County, PA</span>
+        <span class="brand-title">Open Data Portal</span>
+      </div>
+    </a>
+    <nav>
+      <a class="nav-link" href="index.html">Home</a>
+      <a class="nav-link" href="datasets.html">Datasets</a>
+      <a class="nav-link active" href="elections.html">Elections</a>
+      <a class="nav-link" href="apps.html">Apps &amp; Tools</a>
+      <a class="nav-link" href="docs.html">Documents</a>
+      <a class="nav-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Controls -->
+<div class="sub-header">
+  <div class="sub-inner">
+    <p class="sub-title">Election Archive <span>· Results by Precinct</span></p>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label">Year</span>
+      <select class="ctrl-select" id="year-select" onchange="onYearChange()">
+        <option value="2020">2020 General Election</option>
+        <!-- Add future years here -->
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <span class="ctrl-label">Race</span>
+      <select class="ctrl-select" id="race-select" disabled onchange="onRaceChange()">
+        <option value="">Loading races…</option>
+      </select>
+    </div>
+
+    <div class="kpi-row" id="kpi-row">
+      <div class="kpi-pill"><p class="val" id="kpi-precincts">—</p><p class="lbl">Precincts</p></div>
+      <div class="kpi-pill" style="border-color:rgba(33,102,172,.4)"><p class="val" style="color:#7ec8e3" id="kpi-dem-w">—</p><p class="lbl">Dem Won</p></div>
+      <div class="kpi-pill" style="border-color:rgba(214,96,77,.4)"><p class="val" style="color:#fab223" id="kpi-rep-w">—</p><p class="lbl">Rep Won</p></div>
+      <div class="kpi-pill" style="border-color:rgba(255,255,255,.2)"><p class="val" style="color:rgba(255,255,255,.8)" id="kpi-turnout">—</p><p class="lbl">Avg Turnout</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="main-area">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <p class="sidebar-title">Precincts</p>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="search" id="precinct-search" placeholder="Search precincts…" autocomplete="off">
+      </div>
+      <div class="legend" id="legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--dem)"></div>Democratic</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--rep)"></div>Republican</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--other)"></div>Other</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#aaa"></div>No data</div>
+      </div>
+    </div>
+    <div class="precinct-list" id="precinct-list">
+      <div style="padding:1.5rem;text-align:center;color:var(--text-faint);font-size:12px">Select a race to view results</div>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div style="position:relative;flex:1;height:100%;overflow:hidden">
+    <div id="map"></div>
+    <div class="map-loading" id="map-loading" style="display:none">
+      <div class="spinner"></div>
+      <p id="loading-msg">Loading election results…</p>
+      <small id="loading-sub"></small>
+    </div>
+    <button class="home-btn" title="Zoom to full extent" onclick="resetExtent()">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </button>
+    <div class="info-panel" id="info-panel">
+      <p class="info-name" id="info-name">—</p>
+      <div class="info-divider"></div>
+      <div id="info-candidates"></div>
+      <div class="info-divider"></div>
+      <div class="info-row"><span class="info-label">Total votes</span><span class="info-value" id="info-total">—</span></div>
+      <div class="info-row"><span class="info-label">Turnout</span><span class="info-value" id="info-turnout">—</span></div>
+      <div class="info-row"><span class="info-label">Winner</span><span class="info-value" id="info-winner">—</span></div>
+      <div class="info-bar-track">
+        <div class="info-bar-dem" id="info-bar-dem" style="width:0%"></div>
+        <div class="info-bar-rep" id="info-bar-rep" style="width:0%"></div>
+        <div class="info-bar-oth" id="info-bar-oth" style="width:0%"></div>
+      </div>
+      <div class="info-bar-labels">
+        <span style="color:var(--dem)" id="info-dem-pct">—</span>
+        <span style="color:var(--rep)" id="info-rep-pct">—</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Election catalog ─────────────────────────────────────────────────────────
+// Add future election years here using the same field structure
+const ELECTIONS = {
+  '2020': {
+    label: '2020 General Election',
+    layerUrl: 'https://services1.arcgis.com/kOChldNuKsox8qZD/ArcGIS/rest/services/ElectionResults_GE20/FeatureServer/0',
+  },
+  // '2022': { label: '2022 General Election', layerUrl: 'https://...' },
+  // '2024': { label: '2024 General Election', layerUrl: 'https://...' },
+};
+
+const INITIAL_CENTER = [40.15, -75.35];
+const INITIAL_ZOOM   = 11;
+const LABEL_ZOOM     = 13;
+
+// ── State ────────────────────────────────────────────────────────────────────
+let map, geojsonLayer = null, labelLayer = null, highlightedLayer = null;
+let allFeatures = [], currentRace = '', raceIndex = {};
+
+// ── Map init ─────────────────────────────────────────────────────────────────
+map = L.map('map', { zoomControl: true }).setView(INITIAL_CENTER, INITIAL_ZOOM);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+map.on('click', () => {
+  if (highlightedLayer) { resetHighlight(); }
+  document.getElementById('info-panel').classList.remove('show');
+});
+map.on('zoomend', buildLabels);
+
+function resetExtent() { map.setView(INITIAL_CENTER, INITIAL_ZOOM); }
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function fmtNum(n) { return n != null && !isNaN(n) ? parseInt(n).toLocaleString() : '—'; }
+function partyColor(code) {
+  if (!code) return '#aaaaaa';
+  const c = code.toString().toUpperCase().trim();
+  if (c === 'D' || c === 'DEM' || c === 'DEMOCRAT') return '#2166ac';
+  if (c === 'R' || c === 'REP' || c === 'REPUBLICAN') return '#d6604d';
+  return '#888888';
+}
+function partyFromWinner(winnerName, candidates) {
+  if (!winnerName || !candidates) return null;
+  const match = candidates.find(c => c.name === winnerName);
+  return match ? match.party : null;
+}
+
+function loading(show, msg = 'Loading election results…', sub = '') {
+  const el = document.getElementById('map-loading');
+  el.style.display = show ? 'flex' : 'none';
+  if (msg) document.getElementById('loading-msg').textContent = msg;
+  document.getElementById('loading-sub').textContent = sub;
+}
+
+// ── Fetch races for year ──────────────────────────────────────────────────────
+async function fetchRaces(year) {
+  const cfg = ELECTIONS[year];
+  if (!cfg) return [];
+  // Get distinct Contest_title values
+  const url = `${cfg.layerUrl}/query?where=1%3D1&outFields=Contest_title&returnGeometry=false&returnDistinctValues=true&orderByFields=Contest_title&f=geojson`;
+  const res = await fetch(url);
+  const json = await res.json();
+  const races = [...new Set((json.features || []).map(f => f.properties.Contest_title).filter(Boolean))].sort();
+  return races;
+}
+
+// ── Fetch GeoJSON for a specific race ────────────────────────────────────────
+async function fetchRaceFeatures(year, race) {
+  const cfg = ELECTIONS[year];
+  const where = encodeURIComponent(`Contest_title='${race.replace(/'/g, "''")}'`);
+  const url = `${cfg.layerUrl}/query?where=${where}&outFields=*&outSR=4326&f=geojson`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  return json.features || [];
+}
+
+// ── Build race index for sidebar & popups ─────────────────────────────────────
+// Groups features by precinct and collects all candidates
+function buildRaceIndex(features) {
+  const idx = {};
+  features.forEach(f => {
+    const p = f.properties;
+    const pname = p.Precinct_name || 'Unknown';
+    if (!idx[pname]) {
+      idx[pname] = {
+        feature: f,
+        name: pname,
+        municipality: p.Municipality || '',
+        regVoters: p.Reg_voters || 0,
+        turnOut: p.Turn_Out || 0,
+        winner: p.Most_Votes || '',
+        candidates: [],
+      };
+    }
+    // Add candidate if not already added
+    if (p.candidate_name && !idx[pname].candidates.find(c => c.name === p.candidate_name)) {
+      idx[pname].candidates.push({
+        name: p.candidate_name,
+        party: p.Party_Code || '',
+        votes: p.SUM_Votes || p.Votes || 0,
+      });
+    }
+  });
+  // Sort candidates by votes desc
+  Object.values(idx).forEach(d => d.candidates.sort((a, b) => b.votes - a.votes));
+  return idx;
+}
+
+// ── Style ─────────────────────────────────────────────────────────────────────
+function styleFeature(feature) {
+  const p = feature.properties;
+  const winner = p.Most_Votes || '';
+  const winnerParty = partyFromWinner(winner, raceIndex[p.Precinct_name]?.candidates);
+  const color = partyColor(winnerParty);
+  return { fillColor: color, fillOpacity: 0.6, color: '#fff', weight: 1, opacity: 1 };
+}
+
+// ── Render map layer ──────────────────────────────────────────────────────────
+function renderMap(features) {
+  if (geojsonLayer) { map.removeLayer(geojsonLayer); geojsonLayer = null; }
+  if (labelLayer) { map.removeLayer(labelLayer); labelLayer = null; }
+  highlightedLayer = null;
+
+  // Use only one feature per precinct (the first one) for the polygon
+  const seen = new Set();
+  const uniqueFeatures = features.filter(f => {
+    const k = f.properties.Precinct_name;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+
+  geojsonLayer = L.geoJSON({ type: 'FeatureCollection', features: uniqueFeatures }, {
+    style: styleFeature,
+    onEachFeature: (feature, layer) => {
+      layer.on({
+        mouseover: () => {
+          if (layer !== highlightedLayer) {
+            layer.setStyle({ fillOpacity: 0.85, weight: 2, color: '#03425c' });
+            layer.bringToFront();
+          }
+          showInfo(feature.properties.Precinct_name);
+        },
+        mouseout: () => {
+          if (layer !== highlightedLayer) layer.setStyle(styleFeature(feature));
+        },
+        click: () => focusPrecinct(feature.properties.Precinct_name),
+      });
+    }
+  }).addTo(map);
+
+  map.fitBounds(geojsonLayer.getBounds(), { padding: [20, 20] });
+  setTimeout(() => map.invalidateSize(), 100);
+}
+
+// ── Labels ────────────────────────────────────────────────────────────────────
+function buildLabels() {
+  if (labelLayer) { map.removeLayer(labelLayer); labelLayer = null; }
+  if (map.getZoom() < LABEL_ZOOM || !geojsonLayer) return;
+  const markers = [];
+  geojsonLayer.eachLayer(layer => {
+    const name = layer.feature?.properties?.Precinct_name || '';
+    if (!name) return;
+    try {
+      const center = layer.getBounds().getCenter();
+      markers.push(L.marker(center, {
+        icon: L.divIcon({ className: '', html: `<div style="font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;color:#1a1915;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap;pointer-events:none;transform:translate(-50%,-50%);position:absolute;text-align:center">${name}</div>`, iconSize: null, iconAnchor: null }),
+        interactive: false, keyboard: false,
+      }));
+    } catch {}
+  });
+  labelLayer = L.layerGroup(markers).addTo(map);
+}
+
+// ── Info panel ────────────────────────────────────────────────────────────────
+function showInfo(precinctName) {
+  const d = raceIndex[precinctName];
+  if (!d) return;
+  const panel = document.getElementById('info-panel');
+  const total = d.candidates.reduce((s, c) => s + (c.votes || 0), 0);
+  const dem = d.candidates.filter(c => c.party?.toUpperCase() === 'D').reduce((s, c) => s + c.votes, 0);
+  const rep = d.candidates.filter(c => c.party?.toUpperCase() === 'R').reduce((s, c) => s + c.votes, 0);
+  const oth = total - dem - rep;
+  const winnerParty = partyFromWinner(d.winner, d.candidates);
+  const winnerColor = partyColor(winnerParty);
+  const turnoutPct = d.regVoters > 0 ? Math.round(d.turnOut / d.regVoters * 100) : '—';
+
+  document.getElementById('info-name').textContent = precinctName;
+  document.getElementById('info-total').textContent = fmtNum(total);
+  document.getElementById('info-turnout').textContent = typeof turnoutPct === 'number' ? turnoutPct + '%' : '—';
+  document.getElementById('info-winner').innerHTML = `<span style="color:${winnerColor};font-weight:700">${d.winner || '—'}</span>`;
+  document.getElementById('info-candidates').innerHTML = d.candidates.slice(0, 6).map(c => {
+    const pct = total ? Math.round(c.votes / total * 100) : 0;
+    const isWinner = c.name === d.winner;
+    const pc = partyColor(c.party);
+    return `<div class="cand-row">
+      <span class="cand-name" style="color:${pc}">${c.name}</span>
+      <span class="cand-votes">${fmtNum(c.votes)} <span style="color:var(--text-faint);font-weight:500">(${pct}%)</span>${isWinner ? `<span class="cand-winner" style="background:${pc}20;color:${pc}">✓</span>` : ''}</span>
+    </div>`;
+  }).join('');
+
+  if (total) {
+    document.getElementById('info-bar-dem').style.width = (dem / total * 100) + '%';
+    document.getElementById('info-bar-rep').style.width = (rep / total * 100) + '%';
+    document.getElementById('info-bar-oth').style.width = (oth / total * 100) + '%';
+    document.getElementById('info-dem-pct').textContent = Math.round(dem / total * 100) + '% Dem';
+    document.getElementById('info-rep-pct').textContent = Math.round(rep / total * 100) + '% Rep';
+  }
+  panel.classList.add('show');
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function buildSidebar(q = '') {
+  const ql = q.toLowerCase();
+  const items = Object.values(raceIndex)
+    .filter(d => !ql || d.name.toLowerCase().includes(ql))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const list = document.getElementById('precinct-list');
+  if (!items.length) { list.innerHTML = '<p style="padding:1rem;text-align:center;color:var(--text-faint);font-size:12px">No precincts match.</p>'; return; }
+
+  list.innerHTML = items.map(d => {
+    const winnerParty = partyFromWinner(d.winner, d.candidates);
+    const color = partyColor(winnerParty);
+    const label = winnerParty?.toUpperCase() === 'D' ? 'DEM' : winnerParty?.toUpperCase() === 'R' ? 'REP' : winnerParty ? winnerParty : '—';
+    const labelBg = winnerParty?.toUpperCase() === 'D' ? 'rgba(33,102,172,.12)' : winnerParty?.toUpperCase() === 'R' ? 'rgba(214,96,77,.12)' : 'rgba(0,0,0,.06)';
+    return `<div class="precinct-item" onclick="focusPrecinct('${d.name.replace(/'/g, "\\'")}')" data-name="${d.name}">
+      <div class="precinct-dot" style="background:${color}"></div>
+      <div class="precinct-info">
+        <p class="precinct-name">${d.name}</p>
+        <p class="precinct-winner">${d.winner || 'No data'}</p>
+      </div>
+      <span class="precinct-badge" style="background:${labelBg};color:${color}">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+function focusPrecinct(name) {
+  if (highlightedLayer) resetHighlight();
+  geojsonLayer?.eachLayer(layer => {
+    if (layer.feature?.properties?.Precinct_name === name) {
+      layer.setStyle({ fillColor: '#fab223', fillOpacity: 0.85, color: '#03425c', weight: 2 });
+      layer.bringToFront();
+      highlightedLayer = layer;
+      map.fitBounds(layer.getBounds(), { padding: [40, 40] });
+      showInfo(name);
+    }
+  });
+  document.querySelectorAll('.precinct-item').forEach(el => el.classList.remove('highlighted'));
+  const el = document.querySelector(`[data-name="${CSS.escape(name)}"]`);
+  if (el) { el.classList.add('highlighted'); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+
+function resetHighlight() {
+  if (!highlightedLayer) return;
+  const feat = highlightedLayer.feature;
+  highlightedLayer.setStyle(styleFeature(feat));
+  highlightedLayer = null;
+  document.querySelectorAll('.precinct-item').forEach(el => el.classList.remove('highlighted'));
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+function updateKPIs() {
+  const items = Object.values(raceIndex);
+  let dem = 0, rep = 0, totalTurnout = 0, totalReg = 0;
+  items.forEach(d => {
+    const wp = partyFromWinner(d.winner, d.candidates);
+    if (wp?.toUpperCase() === 'D') dem++;
+    else if (wp?.toUpperCase() === 'R') rep++;
+    totalTurnout += d.turnOut || 0;
+    totalReg += d.regVoters || 0;
+  });
+  document.getElementById('kpi-precincts').textContent = items.length;
+  document.getElementById('kpi-dem-w').textContent = dem;
+  document.getElementById('kpi-rep-w').textContent = rep;
+  document.getElementById('kpi-turnout').textContent = totalReg > 0 ? Math.round(totalTurnout / totalReg * 100) + '%' : '—';
+}
+
+// ── Year/Race change handlers ─────────────────────────────────────────────────
+async function onYearChange() {
+  const year = document.getElementById('year-select').value;
+  const raceEl = document.getElementById('race-select');
+  raceEl.disabled = true;
+  raceEl.innerHTML = '<option>Loading races…</option>';
+  raceIndex = {};
+  try {
+    const races = await fetchRaces(year);
+    raceEl.innerHTML = `<option value="">— Select a race —</option>` +
+      races.map(r => `<option value="${r}">${r}</option>`).join('');
+    raceEl.disabled = false;
+  } catch (e) {
+    raceEl.innerHTML = `<option>Failed to load races</option>`;
+  }
+}
+
+async function onRaceChange() {
+  const year = document.getElementById('year-select').value;
+  const race = document.getElementById('race-select').value;
+  if (!race) return;
+  currentRace = race;
+
+  loading(true, `Loading results for ${race}…`, year);
+  document.getElementById('info-panel').classList.remove('show');
+
+  try {
+    // Fetch all features for this race (may need paging for large datasets)
+    const features = await fetchAllFeatures(year, race);
+    raceIndex = buildRaceIndex(features);
+    renderMap(features);
+    buildSidebar();
+    updateKPIs();
+    loading(false);
+    document.getElementById('precinct-search').addEventListener('input', e => buildSidebar(e.target.value), { once: true });
+    document.getElementById('precinct-search').oninput = e => buildSidebar(e.target.value);
+  } catch (e) {
+    loading(false);
+    console.error(e);
+    alert(`Failed to load results: ${e.message}`);
+  }
+}
+
+// ── Paged fetch (handles >2000 record limit) ──────────────────────────────────
+async function fetchAllFeatures(year, race) {
+  const cfg = ELECTIONS[year];
+  const where = encodeURIComponent(`Contest_title='${race.replace(/'/g, "''")}'`);
+  const base = `${cfg.layerUrl}/query?where=${where}&outFields=*&outSR=4326&f=geojson`;
+  let all = [], offset = 0;
+  while (true) {
+    const url = base + `&resultOffset=${offset}&resultRecordCount=2000`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const feats = json.features || [];
+    all = all.concat(feats);
+    if (feats.length < 2000) break;
+    offset += 2000;
+  }
+  return all;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+onYearChange();
+</script>
+</body>
+</html>
