@@ -191,6 +191,10 @@
         <p class="eyebrow">Montgomery County, Pennsylvania</p>
         <h1>Voting Districts — Registered Voters</h1>
         <p class="sub">Party registration by precinct · Live from Montgomery County GIS</p>
+        <p style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;font-weight:500">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Registration data as of May 4, 2026
+        </p>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
         <!-- Precinct majority row -->
@@ -303,7 +307,7 @@ let highlightedLayer = null;
 
 // ── Init map ──
 const INITIAL_CENTER = [40.15, -75.35];
-const INITIAL_ZOOM = 11;
+const INITIAL_ZOOM = 12;
 map = L.map('map', { zoomControl: true }).setView(INITIAL_CENTER, INITIAL_ZOOM);
 function resetExtent() {
   map.setView(INITIAL_CENTER, INITIAL_ZOOM);
