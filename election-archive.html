@@ -239,7 +239,7 @@ const ELECTIONS = {
 };
 
 const INITIAL_CENTER = [40.15, -75.35];
-const INITIAL_ZOOM   = 11;
+const INITIAL_ZOOM   = 12;
 const LABEL_ZOOM     = 13;
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -540,9 +540,13 @@ async function onYearChange() {
   raceIndex = {};
   try {
     const races = await fetchRaces(year);
-    raceEl.innerHTML = `<option value="">— Select a race —</option>` +
-      races.map(r => `<option value="${r}">${r}</option>`).join('');
+    raceEl.innerHTML = races.map(r => `<option value="${r}">${r}</option>`).join('');
     raceEl.disabled = false;
+    // Auto-load first race
+    if (races.length > 0) {
+      raceEl.value = races[0];
+      await onRaceChange();
+    }
   } catch (e) {
     raceEl.innerHTML = `<option>Failed to load races</option>`;
   }
