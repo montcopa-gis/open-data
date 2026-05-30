@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Election Comparison — Montgomery County, PA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cobalt:#03425c; --cobalt-dk:#022e40; --cobalt-lt:#e6f0f5;
+      --marigold:#fab223; --frost:#a9dcd6; --evergreen:#223F33;
+      --linen-lt:#faf6f0; --white:#fff;
+      --text:#1a1915; --text-muted:#4a4845; --text-faint:#8a8780;
+      --border:rgba(3,66,92,0.10); --border-med:rgba(3,66,92,0.20);
+      --dem:#2166ac; --dem-lt:#ddeeff; --rep:#d6604d; --rep-lt:#fde0d8;
+      --lib:#888; --oth:#aaa;
+      --radius-sm:6px; --radius-md:10px; --radius-lg:14px;
+      --font:'Montserrat',system-ui,sans-serif;
+    }
+    body { font-family:var(--font); background:var(--linen-lt); color:var(--text); min-height:100vh; font-size:14px; }
+
+    header { background:var(--cobalt); padding:0 2rem; position:sticky; top:0; z-index:100; box-shadow:0 2px 12px rgba(0,0,0,.2); }
+    .header-inner { max-width:1300px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px; gap:1rem; }
+    .header-brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .brand-logo { height:36px; width:36px; border-radius:7px; object-fit:contain; background:white; padding:2px; }
+    .brand-county { font-size:9px; font-weight:600; letter-spacing:.1em; color:var(--frost); text-transform:uppercase; }
+    .brand-title { font-size:13px; font-weight:700; color:var(--white); line-height:1.2; }
+    nav { display:flex; gap:2px; }
+    .nav-link { font-family:var(--font); font-size:12px; font-weight:500; color:rgba(255,255,255,.75); text-decoration:none; padding:5px 10px; border-radius:var(--radius-sm); transition:background .12s; white-space:nowrap; }
+    .nav-link:hover { background:rgba(255,255,255,.1); color:#fff; }
+    .nav-link.active { color:var(--marigold); }
+
+    /* ── Sub-header ── */
+    .sub-header { background:linear-gradient(135deg,var(--cobalt) 0%,var(--cobalt-dk) 60%,var(--evergreen) 100%); padding:1.25rem 2rem; }
+    .sub-inner { max-width:1300px; margin:0 auto; display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap; }
+    .sub-title { color:#fff; font-size:16px; font-weight:700; white-space:nowrap; }
+    .sub-title span { color:var(--marigold); }
+    .ctrl-group { display:flex; align-items:center; gap:7px; }
+    .ctrl-label { font-size:10px; font-weight:700; color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.07em; white-space:nowrap; }
+    .ctrl-select { font-family:var(--font); font-size:13px; font-weight:500; padding:6px 12px; border-radius:var(--radius-sm); border:1.5px solid rgba(255,255,255,.25); background:rgba(255,255,255,.1); color:#fff; cursor:pointer; }
+    .ctrl-select option { background:var(--cobalt-dk); color:#fff; }
+    .ctrl-select:focus { outline:2px solid var(--marigold); }
+    .btn-compare { font-family:var(--font); font-size:13px; font-weight:700; padding:7px 20px; border-radius:var(--radius-sm); background:var(--marigold); color:var(--cobalt); border:none; cursor:pointer; transition:background .12s; white-space:nowrap; }
+    .btn-compare:hover { background:#e8a810; }
+    .btn-compare:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* ── Main ── */
+    .main { max-width:1300px; margin:0 auto; padding:1.75rem 2rem; }
+
+    /* ── Loading ── */
+    .loading-msg { text-align:center; padding:4rem; color:var(--text-muted); }
+    .spinner { display:inline-block; width:28px; height:28px; border:2px solid var(--border-med); border-top-color:var(--cobalt); border-radius:50%; animation:spin .7s linear infinite; margin-bottom:10px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Summary cards ── */
+    .summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:1.75rem; }
+    .year-card { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:1.25rem 1.5rem; }
+    .year-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .year-label { font-size:13px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.07em; }
+    .year-race { font-size:13px; font-weight:600; color:var(--cobalt); }
+    .party-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .party-name { font-size:12px; font-weight:600; color:var(--text-muted); width:160px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .party-bar-wrap { flex:1; position:relative; }
+    .party-bar-track { height:20px; background:var(--linen-lt); border-radius:4px; overflow:hidden; }
+    .party-bar-fill { height:100%; border-radius:4px; transition:width .5s ease; display:flex; align-items:center; padding-left:6px; }
+    .party-bar-pct { font-size:10px; font-weight:700; color:#fff; white-space:nowrap; }
+    .party-votes { font-size:11px; color:var(--text-faint); font-weight:500; margin-left:6px; width:65px; text-align:right; flex-shrink:0; }
+
+    /* ── Swing summary ── */
+    .swing-card { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:1.25rem 1.5rem; margin-bottom:1.75rem; }
+    .swing-card-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--cobalt); margin-bottom:1rem; }
+    .swing-row { display:flex; align-items:center; gap:12px; padding:.5rem 0; border-bottom:1px solid var(--border); }
+    .swing-row:last-child { border-bottom:none; }
+    .swing-label { font-size:12px; font-weight:600; color:var(--text-muted); width:160px; flex-shrink:0; }
+    .swing-years { display:flex; gap:6px; flex:1; align-items:center; }
+    .swing-val { font-size:13px; font-weight:700; padding:3px 10px; border-radius:20px; }
+    .swing-arrow { font-size:12px; color:var(--text-faint); }
+    .swing-delta { font-size:13px; font-weight:700; padding:3px 10px; border-radius:20px; }
+    .delta-dem { background:var(--dem-lt); color:var(--dem); }
+    .delta-rep { background:var(--rep-lt); color:var(--rep); }
+    .delta-neutral { background:#f0ede6; color:var(--text-muted); }
+
+    /* ── Charts section ── */
+    .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:1.75rem; }
+    .chart-card { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:1.25rem 1.5rem; }
+    .chart-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--cobalt); margin-bottom:1rem; }
+
+    /* ── Vote type chart ── */
+    .vote-type-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .vt-card { background:var(--linen-lt); border-radius:var(--radius-md); padding:.75rem; text-align:center; }
+    .vt-label { font-size:10px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
+    .vt-bars { display:flex; gap:8px; justify-content:center; align-items:flex-end; height:60px; }
+    .vt-bar-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
+    .vt-bar { width:24px; border-radius:3px 3px 0 0; transition:height .4s ease; }
+    .vt-bar-label { font-size:9px; font-weight:600; color:var(--text-faint); }
+    .vt-bar-val { font-size:10px; font-weight:700; color:var(--text); }
+
+    /* ── Municipality table ── */
+    .muni-section { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:1.25rem 1.5rem; margin-bottom:1.75rem; }
+    .muni-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:8px; }
+    .muni-search { font-family:var(--font); font-size:12px; padding:6px 10px; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--linen-lt); color:var(--text); width:200px; }
+    .muni-search:focus { outline:2px solid var(--marigold); border-color:transparent; }
+    .sort-btns { display:flex; gap:5px; }
+    .sort-btn { font-family:var(--font); font-size:11px; font-weight:600; padding:4px 10px; border-radius:20px; border:1.5px solid var(--border); background:transparent; color:var(--text-faint); cursor:pointer; transition:all .12s; }
+    .sort-btn.active { background:var(--cobalt); border-color:var(--cobalt); color:#fff; }
+    .muni-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .muni-table th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); text-align:left; padding:6px 8px; border-bottom:2px solid var(--border); white-space:nowrap; cursor:pointer; }
+    .muni-table th:hover { color:var(--cobalt); }
+    .muni-table td { padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    .muni-table tr:last-child td { border-bottom:none; }
+    .muni-table tr:hover td { background:var(--cobalt-lt); }
+    .muni-name { font-weight:600; color:var(--text); }
+    .pct-cell { font-weight:600; }
+    .swing-cell { font-weight:700; padding:2px 7px; border-radius:10px; font-size:11px; }
+    .dem-swing { background:var(--dem-lt); color:var(--dem); }
+    .rep-swing { background:var(--rep-lt); color:var(--rep); }
+    .neutral-swing { background:#f0ede6; color:var(--text-faint); }
+    .mini-bar { height:6px; border-radius:3px; display:inline-block; vertical-align:middle; }
+
+    @media (max-width:900px) { .summary-grid,.charts-grid { grid-template-columns:1fr; } }
+    @media (max-width:640px) { header { padding:0 1rem; } .sub-header { padding:1rem; } .main { padding:1.25rem 1rem; } nav .nav-link { font-size:11px; padding:4px 7px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="header-brand" href="index.html">
+      <img class="brand-logo" src="Logo%20Vertical%20Dark.png" alt="" onerror="this.style.display='none'">
+      <div>
+        <p class="brand-county">Montgomery County, PA</p>
+        <p class="brand-title">Open Data Portal</p>
+      </div>
+    </a>
+    <nav>
+      <a class="nav-link" href="index.html">Home</a>
+      <a class="nav-link" href="datasets.html">Datasets</a>
+      <a class="nav-link active" href="elections.html">Elections</a>
+      <a class="nav-link" href="apps.html">Apps &amp; Tools</a>
+      <a class="nav-link" href="docs.html">Documents</a>
+      <a class="nav-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
+    </nav>
+  </div>
+</header>
+
+<div class="sub-header">
+  <div class="sub-inner">
+    <p class="sub-title">Election Comparison <span>· Year over Year</span></p>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Year A</span>
+      <select class="ctrl-select" id="year-a">
+        <option value="2020">2020</option>
+        <option value="2024">2024</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">vs Year B</span>
+      <select class="ctrl-select" id="year-b">
+        <option value="2020">2020</option>
+        <option value="2024" selected>2024</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Race</span>
+      <select class="ctrl-select" id="race-select">
+        <option value="">Loading…</option>
+      </select>
+    </div>
+    <button class="btn-compare" id="compare-btn" onclick="runComparison()" disabled>Compare →</button>
+  </div>
+</div>
+
+<main class="main" id="main">
+  <div class="loading-msg">
+    <div class="spinner"></div>
+    <p>Loading election data…</p>
+  </div>
+</main>
+
+<script>
+// ── Election catalog ──────────────────────────────────────────────────────────
+const ELECTIONS = {
+  '2020': { file: '2020_GE_Final.csv', label: '2020 General Election' },
+  '2024': { file: '2024_GE_Final.csv', label: '2024 General Election' },
+};
+
+// ── State ────────────────────────────────────────────────────────────────────
+const cache = {};  // year → parsed rows
+
+// ── CSV parser ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = splitCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = vals[i]?.trim().replace(/^"|"$/g,'') || '');
+    return obj;
+  });
+}
+
+function splitCSVLine(line) {
+  const result = [], re = /(?:^|,)("(?:[^"]|"")*"|[^,]*)/g;
+  let m;
+  while ((m = re.exec(line)) !== null) result.push(m[1]);
+  return result;
+}
+
+// ── Normalize contest names (handle case differences between years) ───────────
+function normalizeContest(s) {
+  return (s || '').trim().toUpperCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[-–]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+// ── Extract municipality from precinct name ───────────────────────────────────
+function getMuni(precinctName) {
+  return (precinctName || '').replace(/\s+\d[\d\-]*[A-Za-z]?\s*$/, '').trim();
+}
+
+// ── Load CSV ──────────────────────────────────────────────────────────────────
+async function loadYear(year) {
+  if (cache[year]) return cache[year];
+  const cfg = ELECTIONS[year];
+  const res = await fetch(cfg.file);
+  if (!res.ok) throw new Error(`Could not load ${cfg.file}`);
+  const text = await res.text();
+  const rows = parseCSV(text);
+  // Normalize contest names
+  rows.forEach(r => { r._contest = normalizeContest(r.Contest_title); r._muni = getMuni(r.Precinct_name); });
+  cache[year] = rows;
+  return rows;
+}
+
+// ── Get shared contests between two years ─────────────────────────────────────
+function sharedContests(rowsA, rowsB) {
+  const ca = new Set(rowsA.map(r => r._contest).filter(Boolean));
+  const cb = new Set(rowsB.map(r => r._contest).filter(Boolean));
+  return [...ca].filter(c => cb.has(c)).sort();
+}
+
+// ── Aggregate data for a race ─────────────────────────────────────────────────
+function aggregateRace(rows, contestNorm) {
+  const filtered = rows.filter(r => r._contest === contestNorm);
+
+  // County totals by party
+  const countyParty = {};
+  const muniParty   = {};  // muni -> party -> votes
+  const voteTypes   = { dem:{ed:0,mail:0,abs:0,prov:0}, rep:{ed:0,mail:0,abs:0,prov:0} };
+  let totalBallots  = 0;
+  let regVoters     = 0;
+  const seenPrecincts = new Set();
+
+  filtered.forEach(r => {
+    const party  = (r.Party_Code || '').toUpperCase();
+    const votes  = parseFloat(r.total_votes) || 0;
+    if (!countyParty[party]) countyParty[party] = 0;
+    countyParty[party] += votes;
+
+    const muni = r._muni;
+    if (!muniParty[muni]) muniParty[muni] = {};
+    if (!muniParty[muni][party]) muniParty[muni][party] = 0;
+    muniParty[muni][party] += votes;
+
+    // Vote type breakdown (DEM+REP only for clarity)
+    if (party === 'DEM' || party === 'REP') {
+      const p = party.toLowerCase();
+      voteTypes[p].ed   += parseFloat(r['Election Day_votes']) || 0;
+      voteTypes[p].mail += parseFloat(r['Mail-in_votes']) || 0;
+      voteTypes[p].abs  += parseFloat(r['Absentee_votes']) || 0;  // 2020 only
+      voteTypes[p].prov += parseFloat(r['Provisional_votes']) || 0;
+    }
+
+    // Turnout / reg voters (once per precinct)
+    const pkey = r.Precinct_name;
+    if (!seenPrecincts.has(pkey)) {
+      seenPrecincts.add(pkey);
+      const reg = parseFloat(r.Reg_voters) || 0;
+      const to  = parseFloat(r.Turn_Out)   || 0;
+      regVoters    += reg;
+      totalBallots += reg * to;
+    }
+  });
+
+  const total = Object.values(countyParty).reduce((s, v) => s + v, 0);
+  const turnoutPct = regVoters > 0 ? (totalBallots / regVoters * 100) : 0;
+
+  return { countyParty, muniParty, voteTypes, total, regVoters, totalBallots, turnoutPct };
+}
+
+// ── Format helpers ────────────────────────────────────────────────────────────
+function pct(n, total) { return total ? (n / total * 100).toFixed(1) : '0.0'; }
+function fmtNum(n) { return Math.round(n).toLocaleString(); }
+function delta(a, b) { return (b - a).toFixed(1); }
+function swingClass(d, party) {
+  if (Math.abs(d) < 0.1) return 'neutral-swing';
+  if (party === 'DEM') return parseFloat(d) > 0 ? 'dem-swing' : 'rep-swing';
+  if (party === 'REP') return parseFloat(d) > 0 ? 'rep-swing' : 'dem-swing';
+  return 'neutral-swing';
+}
+function swingSign(d) { return parseFloat(d) > 0 ? '+' : ''; }
+function partyColor(p) {
+  if (p === 'DEM') return '#2166ac';
+  if (p === 'REP') return '#d6604d';
+  if (p === 'LIB') return '#888';
+  return '#aaa';
+}
+function partyLabel(p, rows) {
+  // Find top candidate for this party
+  const top = rows.filter(r => (r.Party_Code||'').toUpperCase() === p)
+    .sort((a,b) => (parseFloat(b.total_votes)||0) - (parseFloat(a.total_votes)||0))[0];
+  return top ? top.candidate_name : p;
+}
+
+// ── Build race dropdown from shared contests ──────────────────────────────────
+async function initDropdowns() {
+  try {
+    const [r20, r24] = await Promise.all([loadYear('2020'), loadYear('2024')]);
+    const shared = sharedContests(r20, r24);
+    const sel = document.getElementById('race-select');
+    sel.innerHTML = shared.map(c => `<option value="${c}">${titleCase(c)}</option>`).join('');
+    // Pre-select presidential
+    const pres = shared.find(c => c.includes('PRESIDENTIAL'));
+    if (pres) sel.value = pres;
+    document.getElementById('compare-btn').disabled = false;
+    runComparison();
+  } catch(e) {
+    document.getElementById('main').innerHTML = `<p style="color:#a32d2d;padding:2rem;text-align:center">Failed to load data: ${e.message}</p>`;
+  }
+}
+
+function titleCase(s) {
+  return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ── Main comparison ───────────────────────────────────────────────────────────
+async function runComparison() {
+  const yearA   = document.getElementById('year-a').value;
+  const yearB   = document.getElementById('year-b').value;
+  const contest = document.getElementById('race-select').value;
+  if (!contest) return;
+
+  document.getElementById('main').innerHTML = `<div class="loading-msg"><div class="spinner"></div><p>Comparing ${titleCase(contest)}…</p></div>`;
+
+  try {
+    const [rowsA, rowsB] = await Promise.all([loadYear(yearA), loadYear(yearB)]);
+    const aggA = aggregateRace(rowsA, contest);
+    const aggB = aggregateRace(rowsB, contest);
+
+    // Get candidate labels
+    const labelDemA = partyLabel('DEM', rowsA.filter(r => r._contest === contest));
+    const labelRepA = partyLabel('REP', rowsA.filter(r => r._contest === contest));
+    const labelDemB = partyLabel('DEM', rowsB.filter(r => r._contest === contest));
+    const labelRepB = partyLabel('REP', rowsB.filter(r => r._contest === contest));
+
+    const pctDemA = parseFloat(pct(aggA.countyParty['DEM']||0, aggA.total));
+    const pctRepA = parseFloat(pct(aggA.countyParty['REP']||0, aggA.total));
+    const pctDemB = parseFloat(pct(aggB.countyParty['DEM']||0, aggB.total));
+    const pctRepB = parseFloat(pct(aggB.countyParty['REP']||0, aggB.total));
+
+    const html = `
+      <!-- Year cards -->
+      <div class="summary-grid">
+        ${yearCard(yearA, contest, aggA, rowsA, ELECTIONS[yearA].label)}
+        ${yearCard(yearB, contest, aggB, rowsB, ELECTIONS[yearB].label)}
+      </div>
+
+      <!-- Swing summary -->
+      <div class="swing-card">
+        <p class="swing-card-title">📊 Comparison: ${ELECTIONS[yearA].label} vs ${ELECTIONS[yearB].label}</p>
+        <div class="swing-row">
+          <span class="swing-label">🔵 Democratic %</span>
+          <div class="swing-years">
+            <span class="swing-val" style="background:var(--dem-lt);color:var(--dem)">${pctDemA}%</span>
+            <span class="swing-arrow">→</span>
+            <span class="swing-val" style="background:var(--dem-lt);color:var(--dem)">${pctDemB}%</span>
+            <span class="swing-delta ${swingClass(delta(pctDemA,pctDemB),'DEM')}">${swingSign(delta(pctDemA,pctDemB))}${delta(pctDemA,pctDemB)}pp</span>
+          </div>
+        </div>
+        <div class="swing-row">
+          <span class="swing-label">🔴 Republican %</span>
+          <div class="swing-years">
+            <span class="swing-val" style="background:var(--rep-lt);color:var(--rep)">${pctRepA}%</span>
+            <span class="swing-arrow">→</span>
+            <span class="swing-val" style="background:var(--rep-lt);color:var(--rep)">${pctRepB}%</span>
+            <span class="swing-delta ${swingClass(delta(pctRepA,pctRepB),'REP')}">${swingSign(delta(pctRepA,pctRepB))}${delta(pctRepA,pctRepB)}pp</span>
+          </div>
+        </div>
+        <div class="swing-row">
+          <span class="swing-label">📋 Total votes cast</span>
+          <div class="swing-years">
+            <span class="swing-val" style="background:#f0ede6;color:var(--text-muted)">${fmtNum(aggA.total)}</span>
+            <span class="swing-arrow">→</span>
+            <span class="swing-val" style="background:#f0ede6;color:var(--text-muted)">${fmtNum(aggB.total)}</span>
+            <span class="swing-delta ${parseFloat(delta(aggA.total,aggB.total))>0?'dem-swing':'rep-swing'}">${swingSign(delta(aggA.total,aggB.total))}${fmtNum(delta(aggA.total,aggB.total))}</span>
+          </div>
+        </div>
+        <div class="swing-row">
+          <span class="swing-label">🗳️ Avg turnout</span>
+          <div class="swing-years">
+            <span class="swing-val" style="background:#f0ede6;color:var(--text-muted)">${aggA.turnoutPct.toFixed(1)}%</span>
+            <span class="swing-arrow">→</span>
+            <span class="swing-val" style="background:#f0ede6;color:var(--text-muted)">${aggB.turnoutPct.toFixed(1)}%</span>
+            <span class="swing-delta ${parseFloat(delta(aggA.turnoutPct,aggB.turnoutPct))>0?'dem-swing':'rep-swing'}">${swingSign(delta(aggA.turnoutPct,aggB.turnoutPct))}${delta(aggA.turnoutPct,aggB.turnoutPct)}pp</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="charts-grid">
+        ${voteTypeChart(aggA, aggB, yearA, yearB)}
+        ${marginChart(aggA, aggB, yearA, yearB)}
+      </div>
+
+      <!-- Municipality table -->
+      ${muniTable(aggA, aggB, yearA, yearB, rowsA, rowsB, contest)}
+    `;
+
+    document.getElementById('main').innerHTML = html;
+    renderMuniTable('swing');
+
+  } catch(e) {
+    document.getElementById('main').innerHTML = `<p style="color:#a32d2d;padding:2rem;text-align:center">Error: ${e.message}</p>`;
+    console.error(e);
+  }
+}
+
+// ── Year summary card ─────────────────────────────────────────────────────────
+function yearCard(year, contest, agg, rows, label) {
+  const filteredRows = rows.filter(r => r._contest === contest);
+  const parties = Object.entries(agg.countyParty).sort((a,b) => b[1]-a[1]);
+
+  return `<div class="year-card">
+    <div class="year-card-header">
+      <span class="year-label">${year}</span>
+      <span class="year-race">${label}</span>
+    </div>
+    ${parties.map(([party, votes]) => {
+      const pctVal = pct(votes, agg.total);
+      const color = partyColor(party);
+      const cand = partyLabel(party, filteredRows);
+      return `<div class="party-row">
+        <span class="party-name" style="color:${color}" title="${cand}">${cand}</span>
+        <div class="party-bar-wrap">
+          <div class="party-bar-track">
+            <div class="party-bar-fill" style="width:${pctVal}%;background:${color}">
+              <span class="party-bar-pct">${pctVal}%</span>
+            </div>
+          </div>
+        </div>
+        <span class="party-votes">${fmtNum(votes)}</span>
+      </div>`;
+    }).join('')}
+    <div style="margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border);display:flex;gap:1rem;flex-wrap:wrap">
+      <div><p style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em">Total votes</p><p style="font-size:16px;font-weight:700;color:var(--cobalt)">${fmtNum(agg.total)}</p></div>
+      <div><p style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em">Turnout</p><p style="font-size:16px;font-weight:700;color:var(--cobalt)">${agg.turnoutPct.toFixed(1)}%</p></div>
+      <div><p style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em">Registered</p><p style="font-size:16px;font-weight:700;color:var(--cobalt)">${fmtNum(agg.regVoters)}</p></div>
+    </div>
+  </div>`;
+}
+
+// ── Vote type chart ───────────────────────────────────────────────────────────
+function voteTypeChart(aggA, aggB, yearA, yearB) {
+  const types = [
+    { key:'ed',   label:'Election Day' },
+    { key:'mail', label:'Mail-in' },
+    { key:'abs',  label:'Absentee' },
+    { key:'prov', label:'Provisional' },
+  ].filter(t => (aggA.voteTypes.dem[t.key] + aggA.voteTypes.rep[t.key] + aggB.voteTypes.dem[t.key] + aggB.voteTypes.rep[t.key]) > 0);
+
+  const maxVal = Math.max(...types.flatMap(t => [
+    aggA.voteTypes.dem[t.key]+aggA.voteTypes.rep[t.key],
+    aggB.voteTypes.dem[t.key]+aggB.voteTypes.rep[t.key],
+  ]));
+
+  return `<div class="chart-card">
+    <p class="chart-title">Vote type breakdown — DEM vs REP</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    ${types.map(t => {
+      const totalA = aggA.voteTypes.dem[t.key] + aggA.voteTypes.rep[t.key];
+      const totalB = aggB.voteTypes.dem[t.key] + aggB.voteTypes.rep[t.key];
+      const demPctA = totalA ? (aggA.voteTypes.dem[t.key]/totalA*100) : 0;
+      const repPctA = totalA ? (aggA.voteTypes.rep[t.key]/totalA*100) : 0;
+      const demPctB = totalB ? (aggB.voteTypes.dem[t.key]/totalB*100) : 0;
+      const repPctB = totalB ? (aggB.voteTypes.rep[t.key]/totalB*100) : 0;
+      const hA = maxVal ? Math.round(totalA/maxVal*55) : 0;
+      const hB = maxVal ? Math.round(totalB/maxVal*55) : 0;
+      return `<div style="flex:1;min-width:80px;background:var(--linen-lt);border-radius:var(--radius-md);padding:.75rem;text-align:center">
+        <p style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">${t.label}</p>
+        <div style="display:flex;gap:6px;justify-content:center;align-items:flex-end;height:65px;margin-bottom:6px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span style="font-size:9px;font-weight:600;color:var(--dem)">${demPctA.toFixed(0)}%</span>
+            <div style="width:18px;height:${hA}px;background:var(--dem);border-radius:2px 2px 0 0;min-height:2px"></div>
+            <span style="font-size:8px;color:var(--text-faint)">${yearA}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span style="font-size:9px;font-weight:600;color:var(--rep)">${repPctA.toFixed(0)}%</span>
+            <div style="width:18px;height:${Math.round(hA*repPctA/100)||2}px;background:var(--rep);border-radius:2px 2px 0 0;min-height:2px"></div>
+            <span style="font-size:8px;color:var(--text-faint)">${yearA}</span>
+          </div>
+          <div style="width:1px;background:var(--border);height:40px;margin:0 2px;align-self:flex-end"></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span style="font-size:9px;font-weight:600;color:var(--dem)">${demPctB.toFixed(0)}%</span>
+            <div style="width:18px;height:${hB}px;background:var(--dem);border-radius:2px 2px 0 0;min-height:2px;opacity:.7"></div>
+            <span style="font-size:8px;color:var(--text-faint)">${yearB}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span style="font-size:9px;font-weight:600;color:var(--rep)">${repPctB.toFixed(0)}%</span>
+            <div style="width:18px;height:${Math.round(hB*repPctB/100)||2}px;background:var(--rep);border-radius:2px 2px 0 0;min-height:2px;opacity:.7"></div>
+            <span style="font-size:8px;color:var(--text-faint)">${yearB}</span>
+          </div>
+        </div>
+        <p style="font-size:9px;color:var(--text-faint)">${fmtNum(totalA)} → ${fmtNum(totalB)}</p>
+      </div>`;
+    }).join('')}
+    </div>
+  </div>`;
+}
+
+// ── DEM/REP margin chart ──────────────────────────────────────────────────────
+function marginChart(aggA, aggB, yearA, yearB) {
+  const demA = pct(aggA.countyParty['DEM']||0, aggA.total);
+  const repA = pct(aggA.countyParty['REP']||0, aggA.total);
+  const demB = pct(aggB.countyParty['DEM']||0, aggB.total);
+  const repB = pct(aggB.countyParty['REP']||0, aggB.total);
+  const marginA = (parseFloat(demA) - parseFloat(repA)).toFixed(1);
+  const marginB = (parseFloat(demB) - parseFloat(repB)).toFixed(1);
+  const marginColor = n => parseFloat(n) > 0 ? 'var(--dem)' : 'var(--rep)';
+  const marginBg    = n => parseFloat(n) > 0 ? 'var(--dem-lt)' : 'var(--rep-lt)';
+
+  return `<div class="chart-card">
+    <p class="chart-title">DEM–REP margin &amp; party vote share</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem">
+      <div style="text-align:center;padding:.875rem;background:var(--linen-lt);border-radius:var(--radius-md)">
+        <p style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${yearA} margin</p>
+        <p style="font-size:28px;font-weight:700;color:${marginColor(marginA)}">${parseFloat(marginA)>0?'+':''}${marginA}pp</p>
+        <p style="font-size:10px;color:var(--text-faint)">${parseFloat(marginA)>0?'Dem ahead':'Rep ahead'}</p>
+      </div>
+      <div style="text-align:center;padding:.875rem;background:var(--linen-lt);border-radius:var(--radius-md)">
+        <p style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${yearB} margin</p>
+        <p style="font-size:28px;font-weight:700;color:${marginColor(marginB)}">${parseFloat(marginB)>0?'+':''}${marginB}pp</p>
+        <p style="font-size:10px;color:var(--text-faint)">${parseFloat(marginB)>0?'Dem ahead':'Rep ahead'}</p>
+      </div>
+    </div>
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px">DEM vote share</p>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <span style="font-size:12px;font-weight:700;color:var(--dem);width:40px">${demA}%</span>
+      <div style="flex:1;height:14px;background:var(--dem-lt);border-radius:4px;overflow:hidden">
+        <div style="width:${demA}%;height:100%;background:var(--dem);border-radius:4px;transition:width .5s"></div>
+      </div>
+      <span style="font-size:12px;font-weight:700;color:var(--dem);width:40px;text-align:right">${demB}%</span>
+    </div>
+    <p style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px">REP vote share</p>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-size:12px;font-weight:700;color:var(--rep);width:40px">${repA}%</span>
+      <div style="flex:1;height:14px;background:var(--rep-lt);border-radius:4px;overflow:hidden">
+        <div style="width:${repA}%;height:100%;background:var(--rep);border-radius:4px;transition:width .5s"></div>
+      </div>
+      <span style="font-size:12px;font-weight:700;color:var(--rep);width:40px;text-align:right">${repB}%</span>
+    </div>
+    <p style="font-size:10px;color:var(--text-faint);margin-top:8px;text-align:center">Left = ${yearA} · Right = ${yearB}</p>
+  </div>`;
+}
+
+// ── Municipality table ────────────────────────────────────────────────────────
+let muniData = [], muniSortCol = 'swing', muniSortDir = -1;
+
+function muniTable(aggA, aggB, yearA, yearB, rowsA, rowsB, contest) {
+  // Build municipality-level comparison
+  const munis = new Set([...Object.keys(aggA.muniParty), ...Object.keys(aggB.muniParty)]);
+  muniData = [];
+  munis.forEach(m => {
+    const pA = aggA.muniParty[m] || {};
+    const pB = aggB.muniParty[m] || {};
+    const totA = Object.values(pA).reduce((s,v)=>s+v,0);
+    const totB = Object.values(pB).reduce((s,v)=>s+v,0);
+    const demPctA = totA ? (pA['DEM']||0)/totA*100 : 0;
+    const repPctA = totA ? (pA['REP']||0)/totA*100 : 0;
+    const demPctB = totB ? (pB['DEM']||0)/totB*100 : 0;
+    const repPctB = totB ? (pB['REP']||0)/totB*100 : 0;
+    const demSwing = demPctB - demPctA;
+    const repSwing = repPctB - repPctA;
+    muniData.push({ name:m, demPctA, repPctA, demPctB, repPctB, demSwing, repSwing, totA, totB });
+  });
+
+  return `<div class="muni-section">
+    <div class="muni-hd">
+      <p class="chart-title">Results by municipality — ${yearA} vs ${yearB}</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="sort-btns">
+          <button class="sort-btn" onclick="renderMuniTable('name')">A–Z</button>
+          <button class="sort-btn" onclick="renderMuniTable('swing')">By swing</button>
+          <button class="sort-btn" onclick="renderMuniTable('demB')">By DEM %</button>
+        </div>
+        <input type="search" class="muni-search" placeholder="Filter municipalities…" oninput="filterMuni(this.value)">
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="muni-table" id="muni-table">
+        <thead>
+          <tr>
+            <th>Municipality</th>
+            <th style="color:var(--dem)">DEM ${yearA}</th>
+            <th style="color:var(--dem)">DEM ${yearB}</th>
+            <th>DEM Swing</th>
+            <th style="color:var(--rep)">REP ${yearA}</th>
+            <th style="color:var(--rep)">REP ${yearB}</th>
+            <th>REP Swing</th>
+            <th>Votes ${yearA}</th>
+            <th>Votes ${yearB}</th>
+          </tr>
+        </thead>
+        <tbody id="muni-tbody"></tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderMuniTable(sortBy, q='') {
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = [...document.querySelectorAll('.sort-btn')].find(b =>
+    (sortBy==='name'&&b.textContent.includes('A')) ||
+    (sortBy==='swing'&&b.textContent.includes('swing')) ||
+    (sortBy==='demB'&&b.textContent.includes('DEM'))
+  );
+  if (activeBtn) activeBtn.classList.add('active');
+  muniSortCol = sortBy;
+
+  let data = [...muniData];
+  if (q) data = data.filter(d => d.name.toLowerCase().includes(q.toLowerCase()));
+  if (sortBy === 'name')  data.sort((a,b) => a.name.localeCompare(b.name));
+  if (sortBy === 'swing') data.sort((a,b) => b.demSwing - a.demSwing);
+  if (sortBy === 'demB')  data.sort((a,b) => b.demPctB - a.demPctB);
+
+  const tbody = document.getElementById('muni-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = data.map(d => `
+    <tr>
+      <td class="muni-name">${d.name}</td>
+      <td class="pct-cell" style="color:var(--dem)">${d.demPctA.toFixed(1)}%</td>
+      <td class="pct-cell" style="color:var(--dem)">${d.demPctB.toFixed(1)}%</td>
+      <td><span class="swing-cell ${d.demSwing>0.1?'dem-swing':d.demSwing<-0.1?'rep-swing':'neutral-swing'}">${d.demSwing>0?'+':''}${d.demSwing.toFixed(1)}pp</span></td>
+      <td class="pct-cell" style="color:var(--rep)">${d.repPctA.toFixed(1)}%</td>
+      <td class="pct-cell" style="color:var(--rep)">${d.repPctB.toFixed(1)}%</td>
+      <td><span class="swing-cell ${d.repSwing>0.1?'rep-swing':d.repSwing<-0.1?'dem-swing':'neutral-swing'}">${d.repSwing>0?'+':''}${d.repSwing.toFixed(1)}pp</span></td>
+      <td style="color:var(--text-faint)">${fmtNum(d.totA)}</td>
+      <td style="color:var(--text-faint)">${fmtNum(d.totB)}</td>
+    </tr>`).join('');
+}
+
+function filterMuni(q) { renderMuniTable(muniSortCol, q); }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+initDropdowns();
+</script>
+</body>
+</html>
