@@ -270,9 +270,14 @@ function partyColor(code) {
   return '#888888';
 }
 function partyFromWinner(winnerName, candidates) {
-  if (!winnerName || !candidates) return null;
-  const match = candidates.find(c => c.name === winnerName);
-  return match ? match.party : null;
+  // Try exact match first
+  if (winnerName && candidates) {
+    const match = candidates.find(c => c.name === winnerName);
+    if (match) return match.party;
+  }
+  // Fall back to highest vote-getter
+  if (candidates && candidates.length > 0) return candidates[0].party;
+  return null;
 }
 
 function loading(show, msg = 'Loading election results…', sub = '') {
@@ -306,9 +311,9 @@ async function fetchRaceFeatures(year, race) {
 }
 
 // ── Build race index for sidebar & popups ─────────────────────────────────────
-// Groups features by precinct and collects all candidates
 function buildRaceIndex(features) {
   const idx = {};
+
   features.forEach(f => {
     const p = f.properties;
     const pname = p.Precinct_name || 'Unknown';
@@ -317,33 +322,54 @@ function buildRaceIndex(features) {
         feature: f,
         name: pname,
         municipality: p.Municipality || '',
-        regVoters: p.Reg_voters || 0,
-        turnOut: p.Turn_Out || 0,
-        winner: p.Most_Votes || '',
+        regVoters: p.Reg_voters || p.Turn_Out || 0,  // fallback
+        turnOut: p.Turn_Out || p.Ballots || 0,
         candidates: [],
+        winnerName: '',
+        winnerParty: '',
       };
     }
-    // Add candidate if not already added
-    if (p.candidate_name && !idx[pname].candidates.find(c => c.name === p.candidate_name)) {
+    // Accumulate Reg_voters / Turn_Out from whichever row has them
+    if (p.Reg_voters > idx[pname].regVoters) idx[pname].regVoters = p.Reg_voters;
+    if (p.Turn_Out  > idx[pname].turnOut)   idx[pname].turnOut   = p.Turn_Out;
+    if (p.Ballots   > idx[pname].turnOut)   idx[pname].turnOut   = p.Ballots;
+
+    // Add candidate if not already present
+    const votes = parseFloat(p.SUM_Votes) || parseFloat(p.Votes) || 0;
+    const existing = idx[pname].candidates.find(c => c.name === p.candidate_name);
+    if (p.candidate_name && !existing) {
       idx[pname].candidates.push({
         name: p.candidate_name,
         party: p.Party_Code || '',
-        votes: p.SUM_Votes || p.Votes || 0,
+        votes,
       });
+    } else if (existing && votes > existing.votes) {
+      existing.votes = votes;  // keep highest (in case of multiple vote type rows)
     }
   });
-  // Sort candidates by votes desc
-  Object.values(idx).forEach(d => d.candidates.sort((a, b) => b.votes - a.votes));
+
+  // Sort candidates by votes desc, then determine winner from top candidate
+  Object.values(idx).forEach(d => {
+    d.candidates.sort((a, b) => b.votes - a.votes);
+    if (d.candidates.length > 0) {
+      d.winnerName  = d.candidates[0].name;
+      d.winnerParty = d.candidates[0].party || '';
+    }
+    // If turnout is still 0 but we have total votes, use sum of votes as turnout proxy
+    if (!d.turnOut) {
+      d.turnOut = d.candidates.reduce((s, c) => s + c.votes, 0);
+    }
+  });
+
   return idx;
 }
 
 // ── Style ─────────────────────────────────────────────────────────────────────
 function styleFeature(feature) {
   const p = feature.properties;
-  const winner = p.Most_Votes || '';
-  const winnerParty = partyFromWinner(winner, raceIndex[p.Precinct_name]?.candidates);
-  const color = partyColor(winnerParty);
-  return { fillColor: color, fillOpacity: 0.6, color: '#fff', weight: 1, opacity: 1 };
+  const d = raceIndex[p.Precinct_name];
+  const color = d ? partyColor(d.winnerParty) : '#aaaaaa';
+  return { fillColor: color, fillOpacity: 0.62, color: '#fff', weight: 0.8, opacity: 1 };
 }
 
 // ── Render map layer ──────────────────────────────────────────────────────────
@@ -411,17 +437,17 @@ function showInfo(precinctName) {
   const dem = d.candidates.filter(c => c.party?.toUpperCase() === 'D').reduce((s, c) => s + c.votes, 0);
   const rep = d.candidates.filter(c => c.party?.toUpperCase() === 'R').reduce((s, c) => s + c.votes, 0);
   const oth = total - dem - rep;
-  const winnerParty = partyFromWinner(d.winner, d.candidates);
+  const winnerParty = d.winnerParty;
   const winnerColor = partyColor(winnerParty);
-  const turnoutPct = d.regVoters > 0 ? Math.round(d.turnOut / d.regVoters * 100) : '—';
+  const turnoutPct = d.regVoters > 0 ? Math.round(d.turnOut / d.regVoters * 100) + '%' : (d.turnOut > 0 ? fmtNum(d.turnOut) + ' ballots' : '—');
 
   document.getElementById('info-name').textContent = precinctName;
   document.getElementById('info-total').textContent = fmtNum(total);
   document.getElementById('info-turnout').textContent = typeof turnoutPct === 'number' ? turnoutPct + '%' : '—';
-  document.getElementById('info-winner').innerHTML = `<span style="color:${winnerColor};font-weight:700">${d.winner || '—'}</span>`;
+  document.getElementById('info-winner').innerHTML = `<span style="color:${winnerColor};font-weight:700">${d.winnerName || '—'}</span>`;
   document.getElementById('info-candidates').innerHTML = d.candidates.slice(0, 6).map(c => {
     const pct = total ? Math.round(c.votes / total * 100) : 0;
-    const isWinner = c.name === d.winner;
+    const isWinner = c.name === d.winnerName;
     const pc = partyColor(c.party);
     return `<div class="cand-row">
       <span class="cand-name" style="color:${pc}">${c.name}</span>
@@ -450,7 +476,7 @@ function buildSidebar(q = '') {
   if (!items.length) { list.innerHTML = '<p style="padding:1rem;text-align:center;color:var(--text-faint);font-size:12px">No precincts match.</p>'; return; }
 
   list.innerHTML = items.map(d => {
-    const winnerParty = partyFromWinner(d.winner, d.candidates);
+    const winnerParty = d.winnerParty;
     const color = partyColor(winnerParty);
     const label = winnerParty?.toUpperCase() === 'D' ? 'DEM' : winnerParty?.toUpperCase() === 'R' ? 'REP' : winnerParty ? winnerParty : '—';
     const labelBg = winnerParty?.toUpperCase() === 'D' ? 'rgba(33,102,172,.12)' : winnerParty?.toUpperCase() === 'R' ? 'rgba(214,96,77,.12)' : 'rgba(0,0,0,.06)';
@@ -458,7 +484,7 @@ function buildSidebar(q = '') {
       <div class="precinct-dot" style="background:${color}"></div>
       <div class="precinct-info">
         <p class="precinct-name">${d.name}</p>
-        <p class="precinct-winner">${d.winner || 'No data'}</p>
+        <p class="precinct-winner">${d.winnerName || 'No data'}</p>
       </div>
       <span class="precinct-badge" style="background:${labelBg};color:${color}">${label}</span>
     </div>`;
@@ -494,9 +520,8 @@ function updateKPIs() {
   const items = Object.values(raceIndex);
   let dem = 0, rep = 0, totalTurnout = 0, totalReg = 0;
   items.forEach(d => {
-    const wp = partyFromWinner(d.winner, d.candidates);
-    if (wp?.toUpperCase() === 'D') dem++;
-    else if (wp?.toUpperCase() === 'R') rep++;
+    if (d.winnerParty?.toUpperCase() === 'D') dem++;
+    else if (d.winnerParty?.toUpperCase() === 'R') rep++;
     totalTurnout += d.turnOut || 0;
     totalReg += d.regVoters || 0;
   });

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elections — Montgomery County, PA Open Data Portal</title>
+  <meta name="description" content="Montgomery County election data including voter registration maps, historical results, and year-over-year comparisons.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cobalt:#03425c; --cobalt-dk:#022e40; --cobalt-lt:#e6f0f5;
+      --marigold:#fab223; --frost:#a9dcd6; --evergreen:#223F33;
+      --linen:#f4e3cf; --linen-lt:#faf6f0; --white:#ffffff;
+      --text:#1a1915; --text-muted:#4a4845; --text-faint:#8a8780;
+      --border:rgba(3,66,92,0.10); --border-med:rgba(3,66,92,0.20);
+      --dem:#2166ac; --rep:#d6604d;
+      --radius-sm:6px; --radius-md:10px; --radius-lg:14px; --radius-xl:20px;
+      --font:'Montserrat',system-ui,sans-serif;
+    }
+    body { font-family:var(--font); background:var(--linen-lt); color:var(--text); min-height:100vh; font-size:15px; line-height:1.5; }
+
+    /* ── Header ── */
+    header { background:var(--cobalt); padding:0 2rem; position:sticky; top:0; z-index:100; box-shadow:0 2px 12px rgba(0,0,0,.2); }
+    .header-inner { max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:64px; gap:1rem; }
+    .header-brand { display:flex; align-items:center; gap:12px; text-decoration:none; }
+    .brand-logo { height:40px; width:40px; border-radius:8px; object-fit:contain; background:white; padding:2px; }
+    .brand-county { font-size:10px; font-weight:600; letter-spacing:.1em; color:var(--frost); text-transform:uppercase; }
+    .brand-title  { font-size:14px; font-weight:700; color:var(--white); line-height:1.2; }
+    nav { display:flex; gap:2px; }
+    .nav-link { font-family:var(--font); font-size:13px; font-weight:500; color:rgba(255,255,255,.75); text-decoration:none; padding:6px 12px; border-radius:var(--radius-sm); transition:background .12s,color .12s; white-space:nowrap; }
+    .nav-link:hover { background:rgba(255,255,255,.1); color:#fff; }
+    .nav-link.active { color:var(--marigold); }
+
+    /* ── Hero ── */
+    .hero {
+      background:linear-gradient(135deg,var(--cobalt) 0%,var(--cobalt-dk) 55%,var(--evergreen) 100%);
+      padding:5rem 2rem 4rem; position:relative; overflow:hidden;
+    }
+    .hero::before { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); pointer-events:none; }
+    .hero-inner { max-width:1200px; margin:0 auto; position:relative; display:flex; align-items:center; gap:4rem; flex-wrap:wrap; }
+    .hero-text { flex:1; min-width:300px; }
+    .hero-eyebrow { font-size:11px; font-weight:600; letter-spacing:.1em; color:var(--marigold); text-transform:uppercase; margin-bottom:12px; }
+    .hero h1 { font-size:42px; font-weight:700; color:#fff; line-height:1.15; margin-bottom:1.25rem; }
+    .hero h1 span { color:var(--marigold); }
+    .hero-desc { font-size:15px; color:rgba(255,255,255,.75); line-height:1.75; max-width:520px; }
+    .hero-desc p { margin-bottom:.875rem; }
+    .hero-desc p:last-child { margin-bottom:0; }
+
+    /* ── KPI strip ── */
+    .kpi-strip { background:var(--marigold); }
+    .kpi-strip-inner { max-width:1200px; margin:0 auto; display:flex; flex-wrap:wrap; }
+    .kpi-item { flex:1; min-width:120px; display:flex; flex-direction:column; align-items:center; padding:.875rem 1rem; border-right:1px solid rgba(0,0,0,.12); }
+    .kpi-item:last-child { border-right:none; }
+    .kpi-val { font-size:26px; font-weight:700; color:var(--cobalt); line-height:1; }
+    .kpi-lbl { font-size:10px; font-weight:700; color:var(--cobalt); opacity:.7; text-transform:uppercase; letter-spacing:.07em; margin-top:3px; }
+
+    /* ── Main ── */
+    .main { max-width:1200px; margin:0 auto; padding:3rem 2rem; }
+
+    /* ── Section ── */
+    .section-hd { margin-bottom:1.25rem; }
+    .section-title { font-size:20px; font-weight:700; color:var(--cobalt); margin-bottom:6px; }
+    .section-sub { font-size:14px; color:var(--text-muted); line-height:1.6; max-width:640px; }
+
+    /* ── Nav cards ── */
+    .nav-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; margin-bottom:3.5rem; }
+    .nav-card { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius-xl); padding:1.75rem; text-decoration:none; display:flex; flex-direction:column; gap:14px; transition:all .15s; position:relative; overflow:hidden; }
+    .nav-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--card-accent,var(--cobalt)); opacity:0; transition:opacity .15s; }
+    .nav-card:hover { border-color:var(--border-med); box-shadow:0 6px 28px rgba(3,66,92,.1); transform:translateY(-2px); }
+    .nav-card:hover::after { opacity:1; }
+    .card-icon { width:48px; height:48px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .card-icon svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .card-title { font-size:17px; font-weight:700; color:var(--cobalt); line-height:1.3; }
+    .card-desc { font-size:13px; color:var(--text-muted); line-height:1.6; flex:1; }
+    .card-meta { font-size:11px; font-weight:600; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; }
+    .card-arrow { position:absolute; top:1.5rem; right:1.5rem; width:20px; height:20px; color:var(--text-faint); transition:transform .15s, color .15s; }
+    .nav-card:hover .card-arrow { transform:translate(2px,-2px); color:var(--cobalt); }
+    .card-badge { display:inline-flex; align-items:center; font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.04em; }
+
+    /* ── Data note section ── */
+    .note-card { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:1.5rem 1.75rem; display:flex; gap:1.25rem; align-items:flex-start; margin-bottom:3rem; }
+    .note-icon { width:40px; height:40px; border-radius:var(--radius-sm); background:var(--cobalt-lt); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .note-icon svg { width:20px; height:20px; stroke:var(--cobalt); fill:none; stroke-width:2; }
+    .note-title { font-size:14px; font-weight:700; color:var(--cobalt); margin-bottom:4px; }
+    .note-body { font-size:13px; color:var(--text-muted); line-height:1.65; }
+    .note-body a { color:var(--cobalt); font-weight:600; }
+
+    /* ── Divider ── */
+    .section-divider { height:1px; background:var(--border); margin:0 0 2.5rem; }
+
+    /* ── Footer ── */
+    footer { background:var(--cobalt); color:rgba(255,255,255,.6); padding:2rem; margin-top:2rem; }
+    .footer-inner { max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; }
+    footer a { color:var(--frost); }
+    .footer-logo { height:32px; width:32px; border-radius:6px; object-fit:contain; background:white; padding:2px; }
+
+    @media (max-width:640px) {
+      .hero { padding:3rem 1rem 2.5rem; }
+      .hero h1 { font-size:28px; }
+      .main { padding:2rem 1rem; }
+      header { padding:0 1rem; }
+      .kpi-val { font-size:20px; }
+      nav .nav-link { font-size:11px; padding:5px 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="header-brand" href="index.html">
+      <img class="brand-logo" src="Logo%20Vertical%20Dark.png" alt="Montgomery County PA" onerror="this.style.display='none'">
+      <div>
+        <p class="brand-county">Montgomery County, PA</p>
+        <p class="brand-title">Open Data Portal</p>
+      </div>
+    </a>
+    <nav>
+      <a class="nav-link" href="index.html">Home</a>
+      <a class="nav-link" href="datasets.html">Datasets</a>
+      <a class="nav-link active" href="elections.html">Elections</a>
+      <a class="nav-link" href="apps.html">Apps &amp; Tools</a>
+      <a class="nav-link" href="docs.html">Documents</a>
+      <a class="nav-link" href="https://www.montcopa.org" target="_blank" rel="noopener">montcopa.org</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <p class="hero-eyebrow">Montgomery County, Pennsylvania</p>
+      <h1>Election <span>Data Hub</span></h1>
+      <div class="hero-desc">
+        <p>Montgomery County is committed to transparent, accessible election data. Explore current voter registration by precinct, dive into historical general election results, or compare how the county has voted across multiple election cycles.</p>
+        <p>All data is published by Montgomery County and reflects official certified results. Registration data is updated periodically from the county's voter rolls.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- KPI strip -->
+<div class="kpi-strip">
+  <div class="kpi-strip-inner">
+    <div class="kpi-item"><p class="kpi-val">618K</p><p class="kpi-lbl">Registered voters</p></div>
+    <div class="kpi-item"><p class="kpi-val">431</p><p class="kpi-lbl">Precincts</p></div>
+    <div class="kpi-item"><p class="kpi-val">62</p><p class="kpi-lbl">Municipalities</p></div>
+    <div class="kpi-item"><p class="kpi-val">2</p><p class="kpi-lbl">Election years</p></div>
+    <div class="kpi-item"><p class="kpi-val">84%</p><p class="kpi-lbl">Avg turnout (GE)</p></div>
+  </div>
+</div>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- Navigation cards -->
+  <div class="section-hd">
+    <p class="section-title">Explore election data</p>
+    <p class="section-sub">Choose a tool below to explore Montgomery County voter registration, past election results, and year-over-year trends.</p>
+  </div>
+
+  <div class="nav-cards">
+
+    <!-- Voter Registration Map -->
+    <a class="nav-card" href="election-registration.html" style="--card-accent:var(--cobalt)">
+      <div class="card-icon" style="background:var(--cobalt-lt);color:var(--cobalt)">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div>
+        <p class="card-badge" style="background:var(--cobalt-lt);color:var(--cobalt);margin-bottom:8px">Live · Updated May 2026</p>
+        <p class="card-title">Voter Registration Map</p>
+      </div>
+      <p class="card-desc">Interactive precinct-level map showing current Democratic, Republican, and Independent voter registration across all 431 precincts in the county.</p>
+      <p class="card-meta">618K registered · 431 precincts</p>
+      <svg class="card-arrow" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
+    </a>
+
+    <!-- Election Archive -->
+    <a class="nav-card" href="election-archive.html" style="--card-accent:#534ab7">
+      <div class="card-icon" style="background:#eeedfe;color:#534ab7">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+      </div>
+      <div>
+        <p class="card-badge" style="background:#eeedfe;color:#534ab7;margin-bottom:8px">Archive · 2020 General</p>
+        <p class="card-title">Election Results Archive</p>
+      </div>
+      <p class="card-desc">Browse precinct-level results for past general elections. Select an election year and race to see how each precinct voted, with candidate vote totals and turnout.</p>
+      <p class="card-meta">2020 General Election · 28 contests</p>
+      <svg class="card-arrow" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
+    </a>
+
+    <!-- Election Comparison -->
+    <a class="nav-card" href="election-compare.html" style="--card-accent:var(--marigold)">
+      <div class="card-icon" style="background:#fff8e6;color:#8a5200">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <div>
+        <p class="card-badge" style="background:#fff8e6;color:#8a5200;margin-bottom:8px">Analysis · 2020 vs 2024</p>
+        <p class="card-title">Compare Elections</p>
+      </div>
+      <p class="card-desc">Side-by-side comparison of election results across years. See how party vote share, turnout, and margins shifted between election cycles at the county and municipality level.</p>
+      <p class="card-meta">2020 &amp; 2024 General · Presidential + more</p>
+      <svg class="card-arrow" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
+    </a>
+
+  </div>
+
+  <div class="section-divider"></div>
+
+  <!-- About section -->
+  <div class="section-hd" style="margin-bottom:1.25rem">
+    <p class="section-title">About this data</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:3rem">
+    <div class="note-card">
+      <div class="note-icon">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      </div>
+      <div>
+        <p class="note-title">Voter Registration</p>
+        <p class="note-body">Registration figures reflect Montgomery County's official voter rolls as of <strong>May 4, 2026</strong>. Data is sourced live from the county's GIS services and includes registered voters by party across all precincts. Independent and Other registrations are included in county totals.</p>
+      </div>
+    </div>
+    <div class="note-card">
+      <div class="note-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div>
+        <p class="note-title">Election Results</p>
+        <p class="note-body">Results reflect official certified totals from Montgomery County general elections. Figures include Election Day, mail-in, absentee, and provisional ballots. Results are final and are not updated after certification. Additional election years will be added as they become available.</p>
+      </div>
+    </div>
+    <div class="note-card">
+      <div class="note-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div>
+        <p class="note-title">Data use &amp; licensing</p>
+        <p class="note-body">All election data published here is provided free for public use. Montgomery County makes no representations about suitability for any particular purpose. For official election administration matters, contact the <a href="https://www.montcopa.org/346/Election-Services" target="_blank" rel="noopener">Montgomery County Board of Elections</a>.</p>
+      </div>
+    </div>
+    <div class="note-card">
+      <div class="note-icon">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div>
+        <p class="note-title">Coming soon</p>
+        <p class="note-body">We are working to add 2022 General Election results, additional races for comparison, and a precinct boundary change viewer showing how districts have been redrawn over time. Check back for updates.</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img class="footer-logo" src="Logo%20Vertical%20Dark.png" alt="" onerror="this.style.display='none'">
+      <div>
+        <p style="color:#fff;font-weight:600;font-size:13px">Montgomery County, PA</p>
+        <p style="font-size:12px">Open Data Portal — Elections</p>
+      </div>
+    </div>
+    <p style="font-size:12px">Data published by Montgomery County GIS &amp; Election Services. Visit the <a href="index.html">Open Data Portal</a> for all datasets.</p>
+  </div>
+</footer>
+
+</body>
+</html>
